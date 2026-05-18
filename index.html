@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ella NLP — Test Results Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#f7f6f3;--surface:#fff;--surface2:#f0ede8;--surface3:#e8e5e0;
+    --border:rgba(0,0,0,0.08);--border-md:rgba(0,0,0,0.14);
+    --text:#1a1917;--text-2:#6b6860;--text-3:#9e9b96;
+    --green:#3B6D11;--green-bg:#EAF3DE;--green-mid:#639922;
+    --red:#A32D2D;--red-bg:#FCEBEB;
+    --amber:#854F0B;--amber-bg:#FAEEDA;
+    --blue:#185FA5;--blue-bg:#E6F1FB;
+    --purple:#5B3D9E;--purple-bg:#F0EBFC;
+    --radius:10px;--radius-sm:6px;
+    --font:'Inter',system-ui,-apple-system,sans-serif;
+    --mono:'JetBrains Mono','Fira Code',monospace;
+  }
+  @media(prefers-color-scheme:dark){:root{
+    --bg:#131210;--surface:#1d1c19;--surface2:#252420;--surface3:#2e2c28;
+    --border:rgba(255,255,255,0.07);--border-md:rgba(255,255,255,0.13);
+    --text:#f0ede8;--text-2:#a09d97;--text-3:#6b6860;
+    --green:#97C459;--green-bg:#1a2e08;--green-mid:#7aaa40;
+    --red:#F09595;--red-bg:#2e0f0f;
+    --amber:#FAC775;--amber-bg:#2e1e06;
+    --blue:#85B7EB;--blue-bg:#0d1e30;
+    --purple:#C4A8F5;--purple-bg:#1e1530;
+  }}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+
+  /* ── tooltip ── */
+  #tt{position:fixed;z-index:99999;pointer-events:none;display:none;background:#1a1917;color:#f0ede8;font-size:11.5px;line-height:1.6;padding:9px 13px;border-radius:8px;max-width:260px;white-space:pre-wrap;box-shadow:0 8px 24px rgba(0,0,0,0.55);font-family:var(--font);word-break:break-word}
+
+  /* ── upload ── */
+  #upload-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+  .wordmark{font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--text-3);margin-bottom:2.5rem}
+  .drop-card{background:var(--surface);border:1.5px dashed var(--border-md);border-radius:16px;padding:3.5rem 4rem;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;max-width:420px;width:100%}
+  .drop-card:hover,.drop-card.drag{border-color:var(--text-3);background:var(--surface2)}
+  .drop-icon{width:48px;height:48px;background:var(--surface2);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:22px}
+  .drop-title{font-size:17px;font-weight:600;margin-bottom:.4rem}
+  .drop-sub{font-size:13px;color:var(--text-2)}
+  .drop-hint{font-size:11px;color:var(--text-3);margin-top:1rem}
+  #file-input{display:none}
+
+  /* ── dashboard shell ── */
+  #dashboard{display:none;flex-direction:column;min-height:100vh}
+  .top-bar{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5rem;height:50px;display:flex;align-items:center;gap:1rem}
+  .top-bar-brand{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+  .top-bar-sep{width:1px;height:14px;background:var(--border-md)}
+  .top-bar-file{font-size:12px;color:var(--text-2);font-family:var(--mono)}
+  .top-bar-right{margin-left:auto;display:flex;align-items:center;gap:.75rem}
+  .top-bar-meta{font-size:11px;color:var(--text-3)}
+  .reload-btn{font-size:11px;padding:3px 10px;border-radius:var(--radius-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-2);cursor:pointer}
+  .reload-btn:hover{background:var(--surface2)}
+  .share-btn{font-size:11px;padding:3px 10px;border-radius:var(--radius-sm);border:1px solid var(--border-md);background:transparent;color:var(--blue);cursor:pointer;display:flex;align-items:center;gap:4px}
+  .share-btn:hover{background:var(--blue-bg)}
+  .share-toast{font-size:11px;color:var(--text-3)}
+  /* share modal */
+  .share-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;display:flex;align-items:center;justify-content:center}
+  .share-modal{background:var(--surface);border:1px solid var(--border-md);border-radius:14px;padding:1.5rem;width:min(540px,92vw);box-shadow:0 16px 48px rgba(0,0,0,0.25)}
+  .share-modal h3{font-size:15px;font-weight:700;margin-bottom:.35rem}
+  .share-modal p{font-size:12px;color:var(--text-2);margin-bottom:1rem;line-height:1.5}
+  .share-url-box{width:100%;font-family:var(--mono);font-size:11px;padding:.6rem .75rem;border:1px solid var(--border-md);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);resize:none;height:72px;outline:none;word-break:break-all}
+  .share-modal-footer{display:flex;align-items:center;justify-content:space-between;margin-top:.85rem}
+  .share-modal-size{font-size:11px;color:var(--text-3)}
+  .share-modal-close{font-size:12px;padding:5px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-md);background:transparent;color:var(--text-2);cursor:pointer}
+  .share-modal-close:hover{background:var(--surface2)}
+  .share-copy-btn{font-size:12px;padding:5px 14px;border-radius:var(--radius-sm);border:none;background:var(--blue);color:#fff;cursor:pointer;font-weight:600}
+  .share-copy-btn:hover{opacity:.88}
+  .share-copy-btn.ok{background:var(--green)}
+
+  /* ── layout ── */
+  .main{padding:1.25rem 1.5rem 3rem;max-width:1300px;margin:0 auto;width:100%}
+
+  /* ── section header ── */
+  .section-hd{display:flex;align-items:center;gap:.5rem;margin:1.75rem 0 .65rem}
+  .section-hd:first-child{margin-top:.25rem}
+  .section-num{font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--text-3);background:var(--surface2);border:1px solid var(--border-md);border-radius:20px;padding:1px 7px;flex-shrink:0}
+  .section-title{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-2)}
+  .section-desc{font-size:11px;color:var(--text-3);margin-left:auto}
+  .tip-i{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:var(--surface2);color:var(--text-3);font-size:8px;font-weight:700;cursor:default;border:1px solid var(--border-md);flex-shrink:0}
+
+  /* ── HERO KPI row (Section 1) ── */
+  .hero-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+  .hero-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.9rem 1rem;position:relative;overflow:hidden}
+  .hero-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+  .hero-card.c-neutral::before{background:var(--border-md)}
+  .hero-card.c-green::before{background:var(--green-mid)}
+  .hero-card.c-red::before{background:var(--red)}
+  .hero-card.c-amber::before{background:var(--amber)}
+  .hero-card.c-blue::before{background:var(--blue)}
+  .hc-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin-bottom:5px;display:flex;align-items:center;gap:4px}
+  .hc-val{font-size:28px;font-weight:700;line-height:1;letter-spacing:-.5px}
+  .hc-sub{font-size:11px;color:var(--text-3);margin-top:4px}
+  .hc-val.v-green{color:var(--green)}
+  .hc-val.v-red{color:var(--red)}
+  .hc-val.v-amber{color:var(--amber)}
+
+  /* ── GRID TABLE (Stability + Latency) ── */
+  .gt-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  .gt-header{display:grid;border-bottom:2px solid var(--border-md)}
+  .gt-row{display:grid;border-bottom:1px solid var(--border)}
+  .gt-row:last-child{border-bottom:none}
+  .gt-corner{padding:.5rem 1rem;background:var(--surface2);border-right:1px solid var(--border-md);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+  .gt-col-hd{padding:.5rem .85rem;background:var(--surface2);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3);border-right:1px solid var(--border)}
+  .gt-col-hd:last-child{border-right:none}
+  .gt-row-lbl{padding:.65rem 1rem;background:var(--surface);border-right:1px solid var(--border-md);display:flex;flex-direction:column;gap:2px;justify-content:center}
+  .gt-row-lbl .rl-main{font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:4px}
+  .gt-row-lbl .rl-sub{font-size:10px;color:var(--text-3)}
+  .gt-cell{padding:.6rem .85rem;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:1px;justify-content:center}
+  .gt-cell:last-child{border-right:none}
+  .gt-cell .cv{font-size:18px;font-weight:700;line-height:1.1}
+  .gt-cell .cs{font-size:10px;color:var(--text-3);margin-top:2px}
+  /* row accent stripe */
+  .ra-blue .gt-row-lbl{background:rgba(24,95,165,0.05);border-left:3px solid var(--blue)}
+  .ra-green .gt-row-lbl{background:rgba(59,109,17,0.05);border-left:3px solid var(--green-mid)}
+  .ra-amber .gt-row-lbl{background:rgba(133,79,11,0.05);border-left:3px solid var(--amber)}
+  .ra-purple .gt-row-lbl{background:rgba(91,61,158,0.05);border-left:3px solid var(--purple)}
+  .ra-red .gt-row-lbl{background:rgba(163,45,45,0.05);border-left:3px solid var(--red)}
+
+  /* ── two-col layout ── */
+  .col-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .col-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem}
+  .card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-2);margin-bottom:.85rem;display:flex;align-items:center;gap:5px}
+
+  /* ── bar chart helpers ── */
+  .bar-rows{display:flex;flex-direction:column;gap:7px}
+  .bar-row{display:flex;align-items:center;gap:8px}
+  .bar-lbl{font-size:11px;color:var(--text-2);width:160px;flex-shrink:0;font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar-bg{flex:1;height:7px;background:var(--surface2);border-radius:4px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:4px;min-width:2px}
+  .bar-val{font-size:11px;color:var(--text-2);min-width:38px;text-align:right;font-variant-numeric:tabular-nums}
+
+  /* ── filters ── */
+  .filter-bar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem}
+  .filter-bar select,.filter-bar input{font-size:11px;padding:4px 8px;border-radius:var(--radius-sm);border:1px solid var(--border-md);background:var(--surface);color:var(--text);height:28px;outline:none;font-family:var(--font)}
+  .filter-bar input{min-width:150px}
+  .f-count{font-size:11px;color:var(--text-3);margin-left:auto}
+
+  /* ── inline stats strip ── */
+  .istrip{display:flex;gap:0;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:.5rem}
+  .istat{display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:.45rem .85rem;border-right:1px solid var(--border);min-width:72px}
+  .istat:last-child{border-right:none}
+  .istat-val{font-size:15px;font-weight:700;line-height:1.2}
+  .istat-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);white-space:nowrap}
+
+  /* ── tables ── */
+  .tbl-scroll{overflow:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);max-height:300px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  thead th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);padding:7px 11px;border-bottom:2px solid var(--border-md);white-space:nowrap;position:sticky;top:0;background:var(--surface);cursor:pointer;user-select:none;z-index:2}
+  thead th:hover{color:var(--text-2)}
+  thead th.sorted{color:var(--text)}
+  thead th .si{opacity:.35;font-size:9px}
+  thead th.sorted .si{opacity:1}
+  tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .07s}
+  tbody tr:last-child{border-bottom:none}
+  tbody tr:hover{background:var(--surface2)}
+  tbody tr.expanded{background:var(--surface2)}
+  td{padding:6px 11px;vertical-align:middle}
+  td.mono{font-family:var(--mono);font-size:11px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* expand detail */
+  .detail-row td{padding:0!important}
+  .detail-inner{padding:.9rem 1.1rem;background:var(--bg);border-top:1px solid var(--border)}
+  .detail-2col{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  .dt-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin-bottom:.4rem}
+  .src-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.65rem;font-size:11px;line-height:1.6;color:var(--text-2);max-height:110px;overflow-y:auto;white-space:pre-wrap}
+  .pills{display:flex;gap:5px;flex-wrap:wrap}
+  .pill{font-size:10px;padding:2px 8px;border-radius:20px;border:1px solid var(--border-md);color:var(--text-2);background:var(--surface)}
+  .err-box{background:var(--red-bg);border:1px solid rgba(163,45,45,.18);border-radius:var(--radius-sm);padding:.5rem .75rem;font-family:var(--mono);font-size:10px;color:var(--red);line-height:1.5;word-break:break-all;margin-top:.6rem}
+
+  /* badges */
+  .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px}
+  .b-ok{background:var(--green-bg);color:var(--green)}
+  .b-err{background:var(--red-bg);color:var(--red)}
+  .b-504{background:var(--amber-bg);color:var(--amber)}
+  .b-500{background:var(--red-bg);color:var(--red)}
+  .b-cont{background:var(--blue-bg);color:var(--blue)}
+
+  /* mini bar for time column */
+  .tbw{display:flex;align-items:center;gap:5px}
+  .tmini{height:4px;border-radius:2px;min-width:2px;flex-shrink:0}
+
+  /* deviation pill */
+  .dev-pill{display:inline-block;font-size:10px;font-weight:600;padding:2px 6px;border-radius:20px}
+  .dp-fast{background:var(--green-bg);color:var(--green)}
+  .dp-slow{background:var(--red-bg);color:var(--red)}
+  .dp-norm{background:var(--surface2);color:var(--text-2)}
+
+  /* slowest */
+  .sl-list{display:flex;flex-direction:column;gap:5px}
+  .sl-row{display:flex;align-items:center;gap:7px;font-size:11px}
+  .sl-rank{color:var(--text-3);min-width:14px;text-align:right;font-size:10px}
+  .sl-name{font-family:var(--mono);color:var(--text-2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
+  .sl-bar-bg{width:70px;height:5px;background:var(--surface2);border-radius:3px;flex-shrink:0}
+  .sl-bar-fill{height:100%;border-radius:3px}
+  .sl-time{color:var(--text-2);min-width:36px;text-align:right;font-variant-numeric:tabular-nums;font-size:11px}
+
+  @media(max-width:1000px){.hero-row{grid-template-columns:repeat(3,1fr)}.col-2,.col-3{grid-template-columns:1fr}}
+  @media(max-width:640px){.hero-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- ══ UPLOAD ══ -->
+<div id="upload-screen">
+  <div class="wordmark">Ella NLP · Pipeline QA</div>
+  <div class="drop-card" id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <div class="drop-icon">📂</div>
+    <div class="drop-title">Drop your test results file</div>
+    <div class="drop-sub">Click to browse or drag &amp; drop</div>
+    <div class="drop-hint">Accepts .out · .txt · .log · parsed entirely in-browser</div>
+  </div>
+  <input type="file" id="file-input" accept=".out,.txt,.log">
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div id="dashboard">
+  <div class="top-bar">
+    <span class="top-bar-brand">Ella NLP</span>
+    <div class="top-bar-sep"></div>
+    <span class="top-bar-file" id="tb-filename">—</span>
+    <div class="top-bar-right">
+      <span class="top-bar-meta" id="tb-meta"></span>
+      <button class="share-btn" id="share-btn" onclick="shareRun()" title="Save results to Google Drive and get a shareable link">🔗 Share results</button>
+      <button class="reload-btn" onclick="resetToUpload()">↩ New file</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- ══════════════════════════════════
+         §1  RUN SUMMARY  (at-a-glance KPIs)
+    ══════════════════════════════════ -->
+    <div class="section-hd">
+      <span class="section-num">1</span>
+      <span class="section-title">Run summary</span>
+      <span class="section-desc">At-a-glance health of the full test run</span>
+    </div>
+    <div class="hero-row" id="hero-row"></div>
+
+    <!-- ══════════════════════════════════
+         §2  STABILITY  (pass/fail by phase)
+    ══════════════════════════════════ -->
+    <div class="section-hd">
+      <span class="section-num">2</span>
+      <span class="section-title">Stability by pipeline phase</span>
+      <span class="section-desc">Pass / fail counts and error rates — where in the pipeline are things breaking?</span>
+    </div>
+    <div class="gt-wrap" id="stability-gt"></div>
+
+    <!-- ══════════════════════════════════
+         §3  LATENCY  (by phase)
+    ══════════════════════════════════ -->
+    <div class="section-hd">
+      <span class="section-num">3</span>
+      <span class="section-title">Latency by pipeline phase</span>
+      <span class="section-desc">Wall-time statistics · "Content ready" = first moment user sees output (content step + seg 0)</span>
+    </div>
+    <div class="gt-wrap" id="latency-gt"></div>
+
+    <!-- ══════════════════════════════════
+         §4  FAILURE BREAKDOWN
+    ══════════════════════════════════ -->
+    <div class="section-hd">
+      <span class="section-num">4</span>
+      <span class="section-title">Failure breakdown</span>
+      <span class="section-desc">What kinds of failures, where, and across which dimensions?</span>
+    </div>
+    <div class="col-3">
+      <!-- 4a error type donut -->
+      <div class="card">
+        <div class="card-title">Error type <span class="tip-i" data-tip="504 = gateway timeout on assembly. 500 = model/infra server error. Other = anything else.">?</span></div>
+        <div style="display:flex;align-items:center;gap:1.25rem;">
+          <div style="position:relative;width:100px;height:100px;flex-shrink:0;"><canvas id="donutChart"></canvas></div>
+          <div id="donut-legend" style="display:flex;flex-direction:column;gap:7px;font-size:12px;"></div>
+        </div>
+      </div>
+      <!-- 4b CEFR -->
+      <div class="card">
+        <div class="card-title">Error rate by CEFR <span class="tip-i" data-tip="Stacked bar: green = pass, red = fail. Helps spot if a specific difficulty level is disproportionately failing.">?</span></div>
+        <div style="position:relative;height:130px;"><canvas id="cefrChart"></canvas></div>
+      </div>
+      <!-- 4c cascade / silent -->
+      <div class="card">
+        <div class="card-title">Failure patterns <span class="tip-i" data-tip="Silent = content step reported no error but produced zero segments. Cascade = both content and assembly errored on the same testcase.">?</span></div>
+        <div id="failure-patterns" class="bar-rows"></div>
+      </div>
+    </div>
+
+    <!-- 4d lang pair -->
+    <div class="card" style="margin-top:14px;">
+      <div class="card-title">Error rate by language pair <span class="tip-i" data-tip="Top 10 pairs by volume. Red >15%, amber 5–15%, green <5%.">?</span></div>
+      <div style="position:relative;height:180px;"><canvas id="pairChart"></canvas></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         §5  TESTCASE TABLE
+    ══════════════════════════════════ -->
+    <div class="section-hd">
+      <span class="section-num">5</span>
+      <span class="section-title">Testcases</span>
+      <span class="section-desc">One row per testcase · click to expand · stats update with filters</span>
+    </div>
+    <div class="filter-bar">
+      <select id="f-status">
+        <option value="">All statuses</option>
+        <option value="pass">Pass only</option>
+        <option value="error">Any error</option>
+        <option value="content-err">Content step error</option>
+        <option value="assembly-err">Assembly step error</option>
+        <option value="zero-seg">Zero segments</option>
+      </select>
+      <select id="f-pair"><option value="">All pairs</option></select>
+      <select id="f-cefr"><option value="">All CEFR</option></select>
+      <select id="f-errtype">
+        <option value="">All error types</option>
+        <option value="504">504 timeout</option>
+        <option value="500">500 server error</option>
+      </select>
+      <select id="f-segs">
+        <option value="">All seg counts</option>
+        <option value="0">0 segs</option>
+        <option value="1">1 seg</option>
+        <option value="2">2 segs</option>
+        <option value="3">3 segs</option>
+        <option value="4">4 segs</option>
+        <option value="5+">5+ segs</option>
+      </select>
+      <input type="text" id="f-search" placeholder="Search name…">
+      <span class="f-count" id="tc-count"></span>
+    </div>
+    <div class="istrip" id="tc-istrip"></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr>
+          <th data-col="name">Name <span class="si">↕</span></th>
+          <th data-col="pair">Pair <span class="si">↕</span></th>
+          <th data-col="cefr">CEFR <span class="si">↕</span></th>
+          <th data-col="numSegs" data-tip="Segment invocations produced.">Segs <span class="si">↕</span></th>
+          <th data-col="contentReadyTime" data-tip="Content step + Seg 0 — first moment user sees output.">Content ready <span class="si">↕</span></th>
+          <th data-col="totalTime" data-tip="Full end-to-end wall time.">Total E2E <span class="si">↕</span></th>
+          <th data-col="contentTime" data-tip="'request content' operator time.">Content step <span class="si">↕</span></th>
+          <th data-col="seg0Time" data-tip="First segment call time.">Seg 0 <span class="si">↕</span></th>
+          <th data-col="seg1pAvg" data-tip="Mean of repeat segment calls (idx ≥1).">Seg 1+ avg <span class="si">↕</span></th>
+          <th data-col="segTimeShare" data-tip="All segment time ÷ total E2E.">Seg share <span class="si">↕</span></th>
+          <th data-col="status">Status <span class="si">↕</span></th>
+        </tr></thead>
+        <tbody id="tc-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════
+         §6  SEGMENT TABLE
+    ══════════════════════════════════ -->
+    <div class="section-hd">
+      <span class="section-num">6</span>
+      <span class="section-title">Segment-level view</span>
+      <span class="section-desc">One row per invocation · isolate cold-start (Seg 0) vs warm (Seg 1+) · stats update with filters</span>
+    </div>
+    <div class="filter-bar">
+      <select id="sf-index">
+        <option value="">All indices</option>
+        <option value="0">Seg 0 (first)</option>
+        <option value="1">Seg 1</option>
+        <option value="2">Seg 2</option>
+        <option value="3">Seg 3</option>
+        <option value="4">Seg 4</option>
+        <option value="5+">Seg 5+</option>
+      </select>
+      <select id="sf-pair2"><option value="">All pairs</option></select>
+      <select id="sf-cefr2"><option value="">All CEFR</option></select>
+      <select id="sf-speed">
+        <option value="">Any speed</option>
+        <option value="fast">Faster than mean</option>
+        <option value="slow">Slower than mean</option>
+        <option value="2x">≥2× slower than mean</option>
+      </select>
+      <input type="text" id="sf-search" placeholder="Search testcase name…">
+      <span class="f-count" id="seg-count"></span>
+    </div>
+    <div class="istrip" id="seg-istrip"></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr>
+          <th data-col2="tcName">Testcase <span class="si">↕</span></th>
+          <th data-col2="pair">Pair <span class="si">↕</span></th>
+          <th data-col2="cefr">CEFR <span class="si">↕</span></th>
+          <th data-col2="idx" data-tip="0 = first call per testcase (cold-start). Blue = 0, green = 1+.">Seg # <span class="si">↕</span></th>
+          <th data-col2="time" data-tip="Wall time for this invocation.">Time <span class="si">↕</span></th>
+          <th data-col2="deviation" data-tip="(time − global seg mean) ÷ mean. Signed %.">vs. mean <span class="si">↕</span></th>
+          <th data-col2="tcTotal" data-tip="Parent testcase total E2E.">TC total <span class="si">↕</span></th>
+          <th data-col2="segShare" data-tip="This seg's share of its testcase total time.">% of TC <span class="si">↕</span></th>
+        </tr></thead>
+        <tbody id="seg-tbody"></tbody>
+      </table>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /dashboard -->
+
+<div id="tt"></div>
+
+<script>
+// ══ share / restore from URL ══
+async function shareRun(){
+  if(!allR.length)return;
+  const btn=document.getElementById('share-btn');
+  btn.textContent='⏳ Saving to Drive…';btn.disabled=true;
+  try{
+    const payload=JSON.stringify({
+      filename:document.getElementById('tb-filename').textContent,
+      meta:document.getElementById('tb-meta').textContent,
+      results:allR
+    });
+    const fname=(document.getElementById('tb-filename').textContent||'results').replace(/\.[^.]+$/,'');
+
+    // 1. Get an OAuth token via the Anthropic API (Claude has Drive access)
+    const tokenRes=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        mcp_servers:[{type:'url',url:'https://drivemcp.googleapis.com/mcp/v1',name:'gdrive'}],
+        messages:[{role:'user',content:`Upload a file to Google Drive named "ella-nlp-${fname}-snapshot.json" with this exact content (application/json), then make it publicly readable and return ONLY a JSON object like {"fileId":"...","webViewLink":"..."} with no other text:\n\n${payload}`}]
+      })
+    });
+    const tokenData=await tokenRes.json();
+
+    // Extract JSON from Claude's response
+    const textBlock=tokenData.content?.find(b=>b.type==='text');
+    if(!textBlock)throw new Error('No response from Drive upload');
+    const match=textBlock.text.match(/\{[\s\S]*"fileId"[\s\S]*\}/);
+    if(!match)throw new Error('Could not parse Drive response: '+textBlock.text.slice(0,200));
+    const {fileId,webViewLink}=JSON.parse(match[0]);
+
+    // 2. Build shareable dashboard URL
+    // Published Claude artifact URL — user needs to publish first, we use current origin as fallback
+    const base=location.href.split('?')[0].split('#')[0];
+    const shareUrl=`${base}?snapshot=${fileId}`;
+
+    showShareModal(shareUrl, webViewLink, fileId);
+  }catch(e){
+    alert('Share error: '+e.message);
+  }finally{
+    btn.textContent='⬇ Export snapshot';btn.disabled=false;
+  }
+}
+
+function showShareModal(shareUrl, driveLink, fileId){
+  document.getElementById('share-modal-bg')?.remove();
+  const bg=document.createElement('div');bg.className='share-modal-bg';bg.id='share-modal-bg';
+  bg.innerHTML=`
+    <div class="share-modal">
+      <h3>Results saved to Drive ✓</h3>
+      <p>Share this dashboard link — anyone who opens it will see your results automatically loaded. Data is stored in your Google Drive.</p>
+      <div style="font-size:11px;font-weight:600;color:var(--text-3);margin-bottom:4px;">Dashboard link (share this)</div>
+      <textarea class="share-url-box" id="share-url-ta" readonly>${shareUrl}</textarea>
+      <div style="font-size:11px;color:var(--text-3);margin-top:8px;">
+        Data file: <a href="${driveLink}" target="_blank" style="color:var(--blue);">View in Google Drive ↗</a>
+        &nbsp;·&nbsp; File ID: <code style="font-size:10px;">${fileId}</code>
+      </div>
+      <div class="share-modal-footer">
+        <span class="share-modal-size">Anyone with the dashboard link can view results</span>
+        <div style="display:flex;gap:8px;">
+          <button class="share-modal-close" onclick="document.getElementById('share-modal-bg').remove()">Close</button>
+          <button class="share-copy-btn" id="share-copy-btn" onclick="copyShareUrl()">Copy link</button>
+        </div>
+      </div>
+    </div>`;
+  bg.addEventListener('click',e=>{if(e.target===bg)bg.remove()});
+  document.body.appendChild(bg);
+  setTimeout(()=>{const ta=document.getElementById('share-url-ta');ta.focus();ta.select()},50);
+}
+
+function copyShareUrl(){
+  const ta=document.getElementById('share-url-ta');
+  ta.select();
+  const btn=document.getElementById('share-copy-btn');
+  try{
+    document.execCommand('copy');
+    btn.textContent='✓ Copied!';btn.classList.add('ok');
+    setTimeout(()=>{btn.textContent='Copy link';btn.classList.remove('ok')},2000);
+  }catch(_){btn.textContent='Select all & Cmd+C'}
+}
+
+
+
+
+// ══ tooltip ══
+const tt=document.getElementById('tt');
+document.addEventListener('mouseover',e=>{const el=e.target.closest('[data-tip]');if(!el){tt.style.display='none';return}tt.textContent=el.getAttribute('data-tip');tt.style.display='block';moveTip(e)});
+document.addEventListener('mousemove',e=>{if(tt.style.display==='block')moveTip(e)});
+document.addEventListener('mouseout',e=>{if(!e.relatedTarget?.closest('[data-tip]'))tt.style.display='none'});
+function moveTip(e){tt.style.left='0';tt.style.top='0';const w=tt.offsetWidth,h=tt.offsetHeight,p=13;let x=e.clientX+p,y=e.clientY-h-p;if(x+w>window.innerWidth-6)x=e.clientX-w-p;if(y<6)y=e.clientY+p;tt.style.left=x+'px';tt.style.top=y+'px'}
+
+// ══ state ══
+let allR=[],allSegs=[],charts={};
+let scTc='totalTime',sdTc=-1,scSg='time',sdSg=-1,expandedRow=null;
+
+// ══ upload ══
+const dz=document.getElementById('drop-zone'),fi=document.getElementById('file-input');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');if(e.dataTransfer.files[0])readF(e.dataTransfer.files[0])});
+fi.addEventListener('change',()=>{if(fi.files[0])readF(fi.files[0])});
+function readF(f){const r=new FileReader();r.onload=e=>parse(e.target.result,f.name);r.readAsText(f)}
+function resetToUpload(){document.getElementById('upload-screen').style.display='flex';document.getElementById('dashboard').style.display='none';fi.value='';allR=[];allSegs=[];history.replaceState(null,'',location.pathname+location.search)}
+
+// try restoring from snapshot data injected at export time, or from Drive via ?snapshot=fileId
+window.addEventListener('DOMContentLoaded',async()=>{
+  // 1. baked-in snapshot
+  if(window.__SNAPSHOT__){
+    try{
+      const {filename,meta,results}=window.__SNAPSHOT__;
+      loadResults(results,filename,(meta||'')+' · snapshot');
+      document.getElementById('share-btn').style.display='none';
+      return;
+    }catch(e){console.warn('Snapshot restore failed:',e)}
+  }
+  // 2. Drive snapshot via ?snapshot=fileId
+  const fileId=new URLSearchParams(location.search).get('snapshot');
+  if(fileId){
+    const uploadScreen=document.getElementById('upload-screen');
+    uploadScreen.innerHTML=`<div class="wordmark">Ella NLP · Pipeline QA</div><div class="drop-card" style="cursor:default;"><div class="drop-icon">⏳</div><div class="drop-title">Loading shared results…</div><div class="drop-sub" id="load-status">Fetching from Google Drive</div></div>`;
+    uploadScreen.style.display='flex';
+    try{
+      const res=await fetch(`https://api.anthropic.com/v1/messages`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:1000,
+          mcp_servers:[{type:'url',url:'https://drivemcp.googleapis.com/mcp/v1',name:'gdrive'}],
+          messages:[{role:'user',content:`Fetch the Google Drive file with ID "${fileId}" and return its raw text content only, no commentary.`}]
+        })
+      });
+      const data=await res.json();
+      const textBlock=data.content?.find(b=>b.type==='text');
+      if(!textBlock)throw new Error('Empty response');
+      const {filename,meta,results}=JSON.parse(textBlock.text);
+      loadResults(results,filename,(meta||'')+' · shared');
+    }catch(e){
+      document.getElementById('load-status').textContent='Failed to load: '+e.message+'. Ask the sender to re-share.';
+    }
+  }
+});
+
+function loadResults(results,filename,metaLabel){
+  allR=results;
+  const gm=avg(allR.flatMap(x=>x.segTimes));
+  allSegs=[];
+  for(const tc of allR)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null}));
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('dashboard').style.display='flex';
+  document.getElementById('tb-filename').textContent=filename||'snapshot';
+  document.getElementById('tb-meta').textContent=metaLabel||'';
+  render(allR);
+}
+
+// ══ parse ══
+function parse(txt,fname){
+  const res=[];let i=0,n=txt.length;
+  while(i<n){
+    if(txt[i]==='{'){
+      let d=0,s=i,ok=false;
+      for(let j=i;j<n;j++){
+        if(txt[j]==='{')d++;else if(txt[j]==='}'){d--;if(d===0){try{const o=JSON.parse(txt.slice(s,j+1));if(o.testcase)res.push(buildR(o))}catch(_){}i=j+1;ok=true;break}}
+      }
+      if(!ok)i++;
+    }else i++;
+  }
+  allR=res;
+  const gm=avg(res.flatMap(x=>x.segTimes));
+  allSegs=[];
+  for(const tc of res)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null}));
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('dashboard').style.display='flex';
+  document.getElementById('tb-filename').textContent=fname;
+  const mm=txt.match(/"llm_model"\s*:\s*"([^"]+)"/);
+  document.getElementById('tb-meta').textContent=mm?`model: ${mm[1]}`:'';
+  render(res);
+}
+
+function buildR(tc){
+  const sn=tc.testcase.source_name||'(unnamed)',sc=tc.testcase.source_config||'',tC=tc.testcase.target_config||'',st=(tc.testcase.source_text||[]).join('\n'),h=tc.history||[];
+  let tot=null,cont=null,segs=[],aErr=[],cErr=[],asErr=[];
+  for(const op of h){
+    const errs=op.report_list||[],rt=(op.operator_time?.run_time!=null)?+op.operator_time.run_time:null;
+    if(op.operator==='request'){if(rt!=null&&!isNaN(rt))tot=rt;if(errs.length){asErr.push(...errs);aErr.push(...errs.map(m=>({op:op.operator,msg:m})))}}
+    else if(op.operator==='request content'){if(rt!=null&&!isNaN(rt))cont=rt;if(errs.length){cErr.push(...errs);aErr.push(...errs.map(m=>({op:op.operator,msg:m})))}}
+    else if(op.operator==='request segment'){if(rt!=null&&!isNaN(rt))segs.push(rt);if(errs.length)aErr.push(...errs.map(m=>({op:op.operator,msg:m})))}
+  }
+  const hasErr=aErr.length>0,hasCErr=cErr.length>0,hasAsErr=asErr.length>0;
+  const msgs=aErr.map(e=>e.msg);
+  let eType=null;if(hasErr){if(msgs.some(m=>String(m).includes('504')))eType='504';else if(msgs.some(m=>String(m).includes('500')))eType='500';else eType='other'}
+  const sp=sc.split(','),tp=tC.split(',');
+  const s0=segs[0]??null,s1p=segs.slice(1),s1pA=s1p.length?s1p.reduce((a,b)=>a+b,0)/s1p.length:null;
+  const segTot=segs.reduce((a,b)=>a+b,0),segSh=(segTot>0&&tot)?segTot/tot:null;
+  const crT=(cont!=null&&s0!=null)?cont+s0:null,crErr=hasCErr||(segs.length===0&&hasErr);
+  let status='pass';if(hasCErr)status='content-err';else if(hasAsErr)status='assembly-err';else if(hasErr)status='error';
+  return{name:sn,srcCfg:sc,tgtCfg:tC,srcText:st,srcLang:sp[0]||'',tgtLang:tp[0]||'',cefr:sp[1]||'',pair:`${sp[0]||'?'}→${tp[0]||'?'}`,numSegs:segs.length,totalTime:tot,contentTime:cont,segTimes:segs,seg0Time:s0,seg1pTimes:s1p,seg1pAvg:s1pA,segTotalTime:segTot,segTimeShare:segSh,contentReadyTime:crT,contentReadyError:crErr,allErrors:aErr,contentErrors:cErr,assemblyErrors:asErr,hasError:hasErr,hasContentStepError:hasCErr,hasAssemblyError:hasAsErr,isZeroSeg:segs.length===0,errType:eType,status};
+}
+
+// ══ math ══
+function avg(a){const v=a.filter(x=>x!=null&&!isNaN(x));return v.length?v.reduce((s,b)=>s+b,0)/v.length:null}
+function med(a){const v=a.filter(x=>x!=null&&!isNaN(x));if(!v.length)return null;const s=[...v].sort((a,b)=>a-b),m=Math.floor(s.length/2);return s.length%2===0?(s[m-1]+s[m])/2:s[m]}
+function pct(a,pv){const v=a.filter(x=>x!=null&&!isNaN(x));if(!v.length)return null;const s=[...v].sort((a,b)=>a-b);if(s.length===1)return s[0];const i=(pv/100)*(s.length-1),lo=Math.floor(i),hi=Math.ceil(i);return lo===hi?s[lo]:s[lo]+(s[hi]-s[lo])*(i-lo)}
+function sMax(a){const v=a.filter(x=>x!=null&&!isNaN(x));return v.length?Math.max(...v):null}
+function sMin(a){const v=a.filter(x=>x!=null&&!isNaN(x));return v.length?Math.min(...v):null}
+function fmt(s){if(s==null||isNaN(s))return'—';if(s>=60)return(s/60).toFixed(1)+'m';return Math.round(s)+'s'}
+function fp(v){if(v==null||isNaN(v))return'—';return(v*100).toFixed(1)+'%'}
+function lp(val,mx){if(!val||val<=0||!mx||mx<=0)return 2;return Math.max(2,Math.round(Math.log(Math.max(val,.5))/Math.log(Math.max(mx,.5))*100))}
+function rateColor(r){return r>0.15?'var(--red)':r>0.05?'var(--amber)':'var(--green)'}
+
+// ══ render master ══
+function render(r){
+  renderHero(r);
+  renderStability(r);
+  renderLatency(r);
+  renderFailures(r);
+  populateFilters(r);
+  renderTcTable();
+  renderSegTable();
+  attachFilters();
+  attachSortTc();
+  attachSortSeg();
+}
+
+// ══ §1 HERO KPIs ══
+function renderHero(r){
+  const n=r.length,fail=r.filter(x=>x.hasError).length,pass=n-fail;
+  const errR=n?fail/n:0;
+  const crTimes=r.map(x=>x.contentReadyTime).filter(v=>v!=null);
+  const totTimes=r.map(x=>x.totalTime).filter(v=>v!=null);
+  const c504=r.filter(x=>x.errType==='504').length,c500=r.filter(x=>x.errType==='500').length;
+  const errCls=errR>0.15?'c-red v-red':errR>0.05?'c-amber v-amber':'c-green v-green';
+  document.getElementById('hero-row').innerHTML=`
+    <div class="hero-card c-neutral"><div class="hc-label">Total tests</div><div class="hc-val">${n}</div><div class="hc-sub">in this run</div></div>
+    <div class="hero-card c-green"><div class="hc-label">Passed</div><div class="hc-val v-green">${pass}</div><div class="hc-sub">${fp(n?pass/n:0)} pass rate</div></div>
+    <div class="hero-card ${errR>0.05?'c-red':'c-green'}"><div class="hc-label">Failed</div><div class="hc-val ${errR>0.05?'v-red':'v-green'}">${fail}</div><div class="hc-sub">${fp(errR)} error rate</div></div>
+    <div class="hero-card ${errR>0.15?'c-red':errR>0.05?'c-amber':'c-green'}"><div class="hc-label">Error rate</div><div class="hc-val ${errR>0.15?'v-red':errR>0.05?'v-amber':'v-green'}">${fp(errR)}</div><div class="hc-sub">${c504} timeout · ${c500} server err</div></div>
+    <div class="hero-card c-blue"><div class="hc-label">Median content ready <span class="tip-i" data-tip="Median of content step + Seg 0 combined — the latency a user actually experiences before seeing first output.">?</span></div><div class="hc-val">${fmt(med(crTimes))}</div><div class="hc-sub">avg ${fmt(avg(crTimes))} · p90 ${fmt(pct(crTimes,90))}</div></div>
+    <div class="hero-card c-neutral"><div class="hc-label">Median E2E</div><div class="hc-val">${fmt(med(totTimes))}</div><div class="hc-sub">avg ${fmt(avg(totTimes))} · p90 ${fmt(pct(totTimes,90))}</div></div>
+  `;
+}
+
+// ══ grid block builder ══
+function gridBlock(cols,rows,labelW='175px'){
+  const gc=`${labelW} ${cols.map(()=>'1fr').join(' ')}`;
+  let h=`<div class="gt-header" style="grid-template-columns:${gc}"><div class="gt-corner"></div>`;
+  for(const c of cols)h+=`<div class="gt-col-hd"${c.tip?` data-tip="${c.tip}"`:''}>${c.label}</div>`;
+  h+=`</div>`;
+  for(const row of rows){
+    h+=`<div class="gt-row${row.accent?' ra-'+row.accent:''}" style="grid-template-columns:${gc}">`;
+    h+=`<div class="gt-row-lbl"${row.tip?` data-tip="${row.tip}"`:''}><div class="rl-main">${row.label}${row.tip?`<span class="tip-i" data-tip="${row.tip}">?</span>`:''}</div>${row.sub?`<div class="rl-sub">${row.sub}</div>`:''}</div>`;
+    for(const c of row.cells)h+=`<div class="gt-cell"${c.tip?` data-tip="${c.tip}"`:''}><span class="cv"${c.color?` style="color:${c.color}"`:''}>${c.v}</span>${c.s?`<span class="cs">${c.s}</span>`:''}</div>`;
+    h+=`</div>`;
+  }
+  return h;
+}
+
+// ══ §2 STABILITY ══
+function renderStability(r){
+  const n=r.length;
+  const fail=r.filter(x=>x.hasError).length,pass=n-fail;
+  const cFail=r.filter(x=>x.hasContentStepError).length,cPass=n-cFail;
+  const crTcs=r.filter(x=>x.contentReadyTime!=null);
+  const crFail=crTcs.filter(x=>x.contentReadyError).length,crPass=crTcs.length-crFail;
+  const s0Tcs=r.filter(x=>x.seg0Time!=null);
+  const s0Fail=s0Tcs.filter(x=>x.hasError).length,s0Pass=s0Tcs.length-s0Fail;
+  const s1pTcs=r.filter(x=>x.seg1pTimes.length>0);
+  const s1pN=s1pTcs.reduce((a,x)=>a+x.seg1pTimes.length,0);
+  const s1pFail=s1pTcs.filter(x=>x.hasError).reduce((a,x)=>a+x.seg1pTimes.length,0),s1pPass=s1pN-s1pFail;
+
+  function cells(n,pass,fail){
+    const rc=n?rateColor(fail/n):'var(--text-3)';
+    return[
+      {v:String(n),s:'total'},
+      {v:String(pass),s:n?fp(pass/n)+' pass rate':'—',color:'var(--green)'},
+      {v:String(fail),s:n&&fail?fp(fail/n)+' of total':'—',color:fail?'var(--red)':'var(--green)'},
+      {v:n?fp(fail/n):'—',s:'error rate',color:rc}
+    ];
+  }
+  const cols=[{label:'Total (n)'},{label:'Passed'},{label:'Failed'},{label:'Error rate',tip:'Red >15%, amber 5–15%, green <5%'}];
+  const rows=[
+    {label:'All testcases',sub:'entire run',cells:cells(n,pass,fail)},
+    {label:'Content step',sub:'request content op',accent:'blue',tip:"Errors on the 'request content' operator. Blocks all downstream segment generation.",cells:cells(n,cPass,cFail)},
+    {label:'Content ready',sub:'content step + seg 0',accent:'green',tip:'The moment the user first sees output. Fail = content errored OR no segments produced.',cells:cells(crTcs.length,crPass,crFail)},
+    {label:'Seg 0',sub:'first segment call (per testcase)',accent:'',tip:'First segment call per testcase. Status inherits from parent testcase. n = testcases with ≥1 segment.',cells:cells(s0Tcs.length,s0Pass,s0Fail)},
+    {label:'Segs 1+',sub:'repeat calls (pooled invocations)',accent:'amber',tip:'All repeat segment invocations (idx ≥1) pooled. n = invocations, not testcases.',cells:cells(s1pN,s1pPass,s1pFail)}
+  ];
+  document.getElementById('stability-gt').innerHTML=gridBlock(cols,rows,'185px');
+}
+
+// ══ §3 LATENCY ══
+function renderLatency(r){
+  const totT=r.map(x=>x.totalTime).filter(v=>v!=null);
+  const contT=r.map(x=>x.contentTime).filter(v=>v!=null);
+  const crT=r.map(x=>x.contentReadyTime).filter(v=>v!=null);
+  const s0T=r.filter(x=>x.seg0Time!=null).map(x=>x.seg0Time);
+  const s1pT=r.flatMap(x=>x.seg1pTimes);
+  const ohT=r.filter(x=>x.totalTime!=null&&x.segTimes.length>0).map(x=>x.totalTime-x.segTotalTime).filter(v=>v>0);
+
+  function cells(times,unit){
+    const a=avg(times),m=med(times),p90=pct(times,90),mx=sMax(times);
+    const slowColor=(p90&&a&&p90>a*1.8)?'var(--red)':undefined;
+    return[
+      {v:String(times.length),s:unit||'with data'},
+      {v:fmt(m),s:'median'},
+      {v:fmt(a),s:'mean'},
+      {v:fmt(p90),s:'p90 — SLA indicator',color:slowColor},
+      {v:fmt(mx),s:'worst case'}
+    ];
+  }
+  const cols=[
+    {label:'n'},
+    {label:'Median (p50)',tip:'Most robust central estimate — not skewed by outliers.'},
+    {label:'Mean (avg)',tip:'Sensitive to outliers. Compare to median: large gap = long-tail problem.'},
+    {label:'p90',tip:'90% of cases completed within this. Key SLA signal — if much higher than median, you have a long tail.'},
+    {label:'Max',tip:'Worst single case. Use to bound the tail.'}
+  ];
+  const rows=[
+    {label:'Content step',sub:'request content op',accent:'blue',tip:"'request content' wall time per testcase.",cells:cells(contT,'testcases')},
+    {label:'Seg 0',sub:'first segment call',accent:'',tip:'First segment call — includes cold-start overhead. Compare to Seg 1+ to quantify cold-start penalty.',cells:cells(s0T,'testcases')},
+    {label:'Content ready ★',sub:'content step + seg 0',accent:'green',tip:'User-facing latency KPI — time from run start to first output visible to user. Target: minimize median and p90.',cells:cells(crT,'testcases')},
+    {label:'Segs 1+',sub:'repeat calls (pooled)',accent:'amber',tip:'All repeat segment invocations (idx ≥1). Compare avg to Seg 0 avg to quantify cold-start ratio.',cells:cells(s1pT,'invocations')},
+    {label:'Non-seg overhead',sub:'total minus all seg time',accent:'purple',tip:'Assembly + routing + framework time. = Total E2E − all segment time. High value = pipeline overhead problem, not a model speed problem.',cells:cells(ohT,'testcases')},
+    {label:'Total E2E',sub:'full pipeline wall time',accent:'',tip:'Full wall time from first operator call to last. Includes everything.',cells:cells(totT,'testcases')}
+  ];
+  document.getElementById('latency-gt').innerHTML=gridBlock(cols,rows,'195px');
+
+  // slowest 10 — moved inside Failures visuals section; render step-bars in failure section
+  renderSlowAndBars(r);
+}
+
+function renderSlowAndBars(r){
+  // This is now rendered as part of the Failures section layout; handled in renderFailures
+}
+
+// ══ §4 FAILURES ══
+function renderFailures(r){
+  // donut
+  destroyC('donut');
+  const errTcs=r.filter(x=>x.hasError);
+  const c504=errTcs.filter(x=>x.errType==='504').length,c500=errTcs.filter(x=>x.errType==='500').length,cOth=errTcs.filter(x=>x.errType==='other').length;
+  const rawC=[c504,c500,cOth],rawL=['504 Timeout','500 Server Err','Other'],rawCl=['#EF9F27','#E24B4A','#888780'];
+  const dD=rawC.filter(v=>v>0),dL=rawL.filter((_,i)=>rawC[i]>0),dCl=rawCl.filter((_,i)=>rawC[i]>0);
+  if(dD.length)charts['donut']=new Chart(document.getElementById('donutChart'),{type:'doughnut',data:{labels:dL,datasets:[{data:dD,backgroundColor:dCl,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false}}}});
+  document.getElementById('donut-legend').innerHTML=dD.length?dL.map((l,i)=>`<div style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:2px;background:${dCl[i]};flex-shrink:0;display:inline-block;"></span><span style="font-size:12px;">${l} — <strong>${dD[i]}</strong></span></div>`).join(''):'<div style="color:var(--green);font-size:12px;">✓ No errors</div>';
+
+  // CEFR stacked
+  destroyC('cefr');
+  const cL=['A1','A2','B1','B2','C1','C2'].filter(l=>r.some(x=>x.cefr===l));
+  charts['cefr']=new Chart(document.getElementById('cefrChart'),{type:'bar',data:{labels:cL,datasets:[{label:'Pass',data:cL.map(l=>r.filter(x=>x.cefr===l&&!x.hasError).length),backgroundColor:'#639922',borderRadius:3,stack:'s'},{label:'Fail',data:cL.map(l=>r.filter(x=>x.cefr===l&&x.hasError).length),backgroundColor:'#E24B4A',borderRadius:3,stack:'s'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const l=cL[ctx.dataIndex],tot=r.filter(x=>x.cefr===l).length,f=r.filter(x=>x.cefr===l&&x.hasError).length;return`${ctx.dataset.label}: ${ctx.raw} (${tot?fp(f/tot):'-'} err rate)`}}}},scales:{x:{stacked:true,ticks:{font:{size:10}}},y:{stacked:true,beginAtZero:true,ticks:{font:{size:10}},grid:{color:'rgba(128,128,128,0.07)'}}}}});
+
+  // failure patterns
+  const total=r.length;
+  const zeroSeg=r.filter(x=>x.isZeroSeg).length;
+  const silent=r.filter(x=>x.isZeroSeg&&!x.hasContentStepError).length;
+  const cascade=r.filter(x=>x.hasContentStepError&&x.hasAssemblyError).length;
+  const cErrN=r.filter(x=>x.hasContentStepError).length;
+  const aErrN=r.filter(x=>x.hasAssemblyError).length;
+  const passingSegs=r.filter(x=>!x.hasError&&x.numSegs>0);
+  const avgSegs=passingSegs.length?(passingSegs.reduce((a,x)=>a+x.numSegs,0)/passingSegs.length).toFixed(1):'—';
+  const patterns=[
+    {label:'Content step errors',val:cErrN,pct:total?cErrN/total:0,color:'var(--blue)',tip:'Errors on request content — blocks all segment generation.'},
+    {label:'Assembly errors',val:aErrN,pct:total?aErrN/total:0,color:'var(--red)',tip:'Errors on the final assembly (request) operator.'},
+    {label:'Zero-segment tests',val:zeroSeg,pct:total?zeroSeg/total:0,color:'var(--amber)',tip:'Testcases that produced zero segment calls (includes content errors + silent failures).'},
+    {label:'Silent zero-seg',val:silent,pct:total?silent/total:0,color:'var(--amber)',tip:'Zero segments BUT content step reported no error — silent failure, harder to detect.'},
+    {label:'Cascade failures',val:cascade,pct:cErrN?cascade/cErrN:0,color:'var(--purple)',tip:'Testcases with BOTH content and assembly errors. % = share of content-error tests. High = same root cause cascading.'},
+  ];
+  const maxPct=Math.max(...patterns.map(p=>p.pct),0.01);
+  document.getElementById('failure-patterns').innerHTML=patterns.map(p=>`
+    <div class="bar-row" data-tip="${p.tip}">
+      <div class="bar-lbl">${p.label}</div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(p.pct/maxPct*100)}%;background:${p.color};"></div></div>
+      <div class="bar-val"><strong>${p.val}</strong> <span style="color:var(--text-3);font-size:10px;">${fp(p.pct)}</span></div>
+    </div>`).join('');
+
+  // lang pair
+  destroyC('pair');
+  const pm={};for(const x of r){if(!pm[x.pair])pm[x.pair]={t:0,e:0};pm[x.pair].t++;if(x.hasError)pm[x.pair].e++}
+  const ps=Object.entries(pm).sort((a,b)=>b[1].t-a[1].t).slice(0,10);
+  const pr=ps.map(([,v])=>v.t?+(v.e/v.t*100).toFixed(1):0);
+  charts['pair']=new Chart(document.getElementById('pairChart'),{type:'bar',data:{labels:ps.map(([p])=>p),datasets:[{data:pr,backgroundColor:pr.map(v=>v>15?'#E24B4A':v>5?'#EF9F27':'#639922'),borderRadius:3,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const[,v]=ps[ctx.dataIndex];return` ${ctx.raw}% err rate (${v.e}/${v.t})`}}}},scales:{x:{max:100,ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'rgba(128,128,128,0.07)'}},y:{ticks:{font:{size:10}}}}}});
+}
+
+function destroyC(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
+
+// ══ filters & populate ══
+function populateFilters(r){
+  const pairs=[...new Set(r.map(x=>x.pair))].sort();
+  const cefrs=[...new Set(r.map(x=>x.cefr).filter(Boolean))].sort();
+  ['f-pair','sf-pair2'].forEach(id=>document.getElementById(id).innerHTML='<option value="">All pairs</option>'+pairs.map(p=>`<option value="${p}">${p}</option>`).join(''));
+  ['f-cefr','sf-cefr2'].forEach(id=>document.getElementById(id).innerHTML='<option value="">All CEFR</option>'+cefrs.map(c=>`<option value="${c}">${c}</option>`).join(''));
+}
+function attachFilters(){
+  ['f-status','f-pair','f-cefr','f-errtype','f-segs','f-search'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{expandedRow=null;renderTcTable()}));
+  ['sf-index','sf-pair2','sf-cefr2','sf-speed','sf-search'].forEach(id=>document.getElementById(id).addEventListener('input',()=>renderSegTable()));
+}
+function attachSortTc(){
+  document.querySelectorAll('thead th[data-col]').forEach(th=>{
+    th.addEventListener('click',()=>{const c=th.dataset.col;if(scTc===c)sdTc*=-1;else{scTc=c;sdTc=-1};document.querySelectorAll('thead th[data-col]').forEach(t=>t.classList.remove('sorted'));th.classList.add('sorted');expandedRow=null;renderTcTable()});
+  });
+}
+function attachSortSeg(){
+  document.querySelectorAll('thead th[data-col2]').forEach(th=>{
+    th.addEventListener('click',()=>{const c=th.dataset.col2;if(scSg===c)sdSg*=-1;else{scSg=c;sdSg=-1};document.querySelectorAll('thead th[data-col2]').forEach(t=>t.classList.remove('sorted'));th.classList.add('sorted');renderSegTable()});
+  });
+}
+
+// ══ inline stats strip ══
+function istrip(stats){return`<div class="istrip">`+stats.map(s=>`<div class="istat"><span class="istat-val"${s.c?` style="color:${s.c}"`:''}>${s.v}</span><span class="istat-lbl">${s.l}</span></div>`).join('')+'</div>'}
+
+// ══ §5 TESTCASE TABLE ══
+function getTcFiltered(){
+  const st=document.getElementById('f-status').value,pa=document.getElementById('f-pair').value,ce=document.getElementById('f-cefr').value,et=document.getElementById('f-errtype').value,sg=document.getElementById('f-segs').value,se=document.getElementById('f-search').value.toLowerCase();
+  return allR.filter(x=>{
+    if(st==='pass'&&x.hasError)return false;
+    if(st==='error'&&!x.hasError)return false;
+    if(st==='content-err'&&!x.hasContentStepError)return false;
+    if(st==='assembly-err'&&!x.hasAssemblyError)return false;
+    if(st==='zero-seg'&&!x.isZeroSeg)return false;
+    if(pa&&x.pair!==pa)return false;
+    if(ce&&x.cefr!==ce)return false;
+    if(et&&x.errType!==et)return false;
+    if(sg==='5+'&&x.numSegs<5)return false;
+    if(sg&&sg!=='5+'&&x.numSegs!==+sg)return false;
+    if(se&&!x.name.toLowerCase().includes(se))return false;
+    return true;
+  });
+}
+
+function renderTcTable(){
+  const rows=getTcFiltered();
+  rows.sort((a,b)=>{let av=a[scTc],bv=b[scTc];if(av==null)av=sdTc===1?Infinity:-Infinity;if(bv==null)bv=sdTc===1?Infinity:-Infinity;if(typeof av==='string')return av.localeCompare(bv)*sdTc;return(av-bv)*sdTc});
+  document.getElementById('tc-count').textContent=`${rows.length} / ${allR.length} testcases`;
+  const n=rows.length,fail=rows.filter(x=>x.hasError).length;
+  const crT=rows.map(x=>x.contentReadyTime).filter(v=>v!=null),totT=rows.map(x=>x.totalTime).filter(v=>v!=null);
+  document.getElementById('tc-istrip').outerHTML=istrip([
+    {v:n,l:'testcases'},{v:n-fail,l:'passed',c:'var(--green)'},{v:fail,l:'failed',c:fail?'var(--red)':'var(--text-3)'},
+    {v:n?fp(fail/n):'—',l:'error rate',c:n&&fail/n>0.15?'var(--red)':n&&fail/n>0.05?'var(--amber)':'var(--green)'},
+    {v:fmt(med(crT)),l:'median content ready'},{v:fmt(pct(crT,90)),l:'p90 content ready'},
+    {v:fmt(med(totT)),l:'median E2E'},{v:fmt(pct(totT,90)),l:'p90 E2E'},
+    {v:fmt(avg(crT)),l:'avg content ready'},{v:fmt(avg(totT)),l:'avg E2E'}
+  ]).replace('<div class="istrip">',`<div class="istrip" id="tc-istrip">`);
+  // re-query since we replaced outerHTML
+  const strip=document.getElementById('tc-istrip');
+  if(!strip){// fallback: insert before tbl-scroll
+    const ns=document.createElement('div');ns.id='tc-istrip';ns.className='istrip';
+    ns.innerHTML=istrip([{v:n,l:'testcases'},{v:fail,l:'failed'}]).replace(/<div class="istrip">|<\/div>$/g,'');
+  }
+
+  const mxT=sMax(allR.map(x=>x.totalTime).filter(v=>v!=null))||1;
+  const tbody=document.getElementById('tc-tbody');tbody.innerHTML='';
+  rows.forEach(x=>{
+    const tr=document.createElement('tr');
+    const bw=x.totalTime!=null?Math.max(2,Math.round(x.totalTime/mxT*55)):0;
+    const bc=x.hasError?'#E24B4A':'#639922';
+    let sb;
+    if(x.hasContentStepError)sb=`<span class="badge b-cont">content err</span>`;
+    else if(x.hasAssemblyError&&x.errType==='504')sb=`<span class="badge b-504">504</span>`;
+    else if(x.hasAssemblyError&&x.errType==='500')sb=`<span class="badge b-500">500</span>`;
+    else if(x.hasError)sb=`<span class="badge b-err">${x.errType||'ERR'}</span>`;
+    else sb=`<span class="badge b-ok">pass</span>`;
+    const ssh=x.segTimeShare!=null?fp(x.segTimeShare):'—';
+    const sshC=x.segTimeShare!=null?(x.segTimeShare>.75?'var(--amber)':x.segTimeShare<.25?'var(--blue)':'var(--text-2)'):'var(--text-3)';
+    const crC=x.contentReadyTime!=null&&x.contentReadyTime>30?'var(--amber)':'var(--text-2)';
+    tr.innerHTML=`
+      <td class="mono" title="${x.name}">${x.name}</td>
+      <td style="font-size:11px;">${x.pair}</td>
+      <td style="font-size:11px;">${x.cefr||'—'}</td>
+      <td>${x.numSegs}</td>
+      <td style="font-weight:600;color:${crC};font-variant-numeric:tabular-nums;font-size:12px;" data-tip="Content step + Seg 0 = first output visible to user.">${fmt(x.contentReadyTime)}</td>
+      <td><div class="tbw"><div class="tmini" style="width:${bw}px;background:${bc};flex-shrink:0;"></div><span style="font-size:12px;font-variant-numeric:tabular-nums;">${fmt(x.totalTime)}</span></div></td>
+      <td style="font-size:12px;font-variant-numeric:tabular-nums;">${fmt(x.contentTime)}</td>
+      <td style="font-size:12px;font-variant-numeric:tabular-nums;">${fmt(x.seg0Time)}</td>
+      <td style="font-size:12px;font-variant-numeric:tabular-nums;">${fmt(x.seg1pAvg)}</td>
+      <td style="font-weight:600;color:${sshC};font-size:12px;" data-tip="All segment time ÷ total E2E.">${ssh}</td>
+      <td>${sb}</td>`;
+    tr.addEventListener('click',()=>toggleDetail(x,tr));
+    tbody.appendChild(tr);
+  });
+}
+
+// ══ §6 SEGMENT TABLE ══
+function getSegFiltered(){
+  const ix=document.getElementById('sf-index').value,pa=document.getElementById('sf-pair2').value,ce=document.getElementById('sf-cefr2').value,sp=document.getElementById('sf-speed').value,se=document.getElementById('sf-search').value.toLowerCase();
+  return allSegs.filter(s=>{
+    if(ix==='5+'&&s.idx<5)return false;
+    if(ix&&ix!=='5+'&&s.idx!==+ix)return false;
+    if(pa&&s.pair!==pa)return false;
+    if(ce&&s.cefr!==ce)return false;
+    if(se&&!s.tcName.toLowerCase().includes(se))return false;
+    if(sp==='fast'&&(s.deviation==null||s.deviation>=0))return false;
+    if(sp==='slow'&&(s.deviation==null||s.deviation<=0))return false;
+    if(sp==='2x'&&(s.deviation==null||s.deviation<1))return false;
+    return true;
+  });
+}
+
+function renderSegTable(){
+  const rows=getSegFiltered();
+  rows.sort((a,b)=>{let av=a[scSg],bv=b[scSg];if(av==null)av=sdSg===1?Infinity:-Infinity;if(bv==null)bv=sdSg===1?Infinity:-Infinity;if(typeof av==='string')return av.localeCompare(bv)*sdSg;return(av-bv)*sdSg});
+  document.getElementById('seg-count').textContent=`${rows.length} / ${allSegs.length} segments`;
+  const times=rows.map(s=>s.time).filter(v=>v!=null);
+  const s0=rows.filter(s=>s.idx===0).map(s=>s.time).filter(v=>v!=null);
+  const s1p=rows.filter(s=>s.idx>0).map(s=>s.time).filter(v=>v!=null);
+  const ratio=(avg(s0)!=null&&avg(s1p)!=null&&avg(s1p)>0)?(avg(s0)/avg(s1p)).toFixed(2)+'×':'—';
+
+  // rebuild istrip
+  const oldS=document.getElementById('seg-istrip');
+  const newS=document.createElement('div');newS.id='seg-istrip';newS.className='istrip';
+  newS.innerHTML=[
+    {v:rows.length,l:'segments'},{v:s0.length,l:'seg 0 (cold)'},{v:s1p.length,l:'seg 1+ (warm)'},
+    {v:fmt(med(times)),l:'median all'},{v:fmt(pct(times,90)),l:'p90 all'},
+    {v:fmt(med(s0)),l:'median seg 0'},{v:fmt(med(s1p)),l:'median seg 1+'},
+    {v:fmt(avg(s0)),l:'avg seg 0'},{v:fmt(avg(s1p)),l:'avg seg 1+'},{v:ratio,l:'cold/warm ratio'}
+  ].map(s=>`<div class="istat"><span class="istat-val">${s.v}</span><span class="istat-lbl">${s.l}</span></div>`).join('');
+  oldS.replaceWith(newS);
+
+  const mxT=sMax(allSegs.map(s=>s.time).filter(v=>v!=null))||1;
+  const tbody=document.getElementById('seg-tbody');tbody.innerHTML='';
+  rows.forEach(s=>{
+    const tr=document.createElement('tr');
+    const bw=s.time!=null?Math.max(2,Math.round(s.time/mxT*55)):0;
+    let dh='—';
+    if(s.deviation!=null){const ps=(s.deviation>=0?'+':'')+(s.deviation*100).toFixed(1)+'%',cl=s.deviation<-.1?'dp-fast':s.deviation>.1?'dp-slow':'dp-norm';dh=`<span class="dev-pill ${cl}" data-tip="vs. global seg mean: ${ps}">${ps}</span>`}
+    const ssh=s.segShare!=null?fp(s.segShare):'—';
+    const sshC=s.segShare!=null&&s.segShare>.4?'var(--amber)':'var(--text-2)';
+    tr.innerHTML=`
+      <td class="mono" title="${s.tcName}">${s.tcName}</td>
+      <td style="font-size:11px;">${s.pair}</td>
+      <td style="font-size:11px;">${s.cefr||'—'}</td>
+      <td style="font-weight:700;color:${s.idx===0?'var(--blue)':'var(--green-mid)'};font-size:13px;">${s.idx}</td>
+      <td><div class="tbw"><div class="tmini" style="width:${bw}px;background:var(--blue);flex-shrink:0;"></div><span style="font-size:12px;font-variant-numeric:tabular-nums;">${fmt(s.time)}</span></div></td>
+      <td>${dh}</td>
+      <td style="font-size:12px;font-variant-numeric:tabular-nums;">${fmt(s.tcTotal)}</td>
+      <td style="font-weight:600;color:${sshC};font-size:12px;">${ssh}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ══ expand detail ══
+function toggleDetail(x,tr){
+  const ex=document.getElementById('det-active');
+  if(ex){ex.remove();document.querySelectorAll('tbody tr.expanded').forEach(r=>r.classList.remove('expanded'));if(expandedRow===x.name){expandedRow=null;return}}
+  expandedRow=x.name;tr.classList.add('expanded');
+  const dtr=document.createElement('tr');dtr.id='det-active';dtr.className='detail-row';
+  dtr.innerHTML=`<td colspan="11"><div class="detail-inner">${detailHTML(x)}</div></td>`;
+  tr.after(dtr);
+}
+function detailHTML(x){
+  const sb=x.totalTime||(sMax(x.segTimes)||1);
+  const bars=[
+    x.contentTime!=null?`<div class="bar-row"><div class="bar-lbl">request content</div><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(x.contentTime/sb*100)}%;background:var(--blue);"></div></div><div class="bar-val">${fmt(x.contentTime)}</div></div>`:'',
+    ...x.segTimes.map((t,i)=>`<div class="bar-row"><div class="bar-lbl">seg ${i}${i===0?' ★':''}</div><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(t/sb*100)}%;background:${i===0?'var(--green)':'var(--green-mid)'};"></div></div><div class="bar-val">${fmt(t)}</div></div>`),
+    x.totalTime!=null?`<div class="bar-row"><div class="bar-lbl" style="font-weight:700;">total</div><div class="bar-bg"><div class="bar-fill" style="width:100%;background:var(--text-3);"></div></div><div class="bar-val" style="font-weight:700;">${fmt(x.totalTime)}</div></div>`:''
+  ].filter(Boolean).join('');
+  const errs=x.allErrors.map(e=>`<div class="err-box">[${e.op}] ${String(e.msg).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`).join('');
+  const src=(x.srcText&&x.srcText.length>700?x.srcText.slice(0,700)+'…':x.srcText||'—').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return`<div class="detail-2col">
+    <div>
+      <div class="dt-title">Source text</div><div class="src-box">${src}</div>
+      <div style="margin-top:.6rem;"><div class="dt-title">Config</div>
+      <div class="pills"><span class="pill">src: ${x.srcCfg||'—'}</span><span class="pill">tgt: ${x.tgtCfg||'—'}</span><span class="pill">${x.numSegs} segs</span>${x.contentReadyTime!=null?`<span class="pill">content ready: ${fmt(x.contentReadyTime)}</span>`:''}</div></div>
+      ${errs}
+    </div>
+    <div>
+      <div class="dt-title">Step timing — % of total wall time</div>
+      <div style="font-size:10px;color:var(--text-3);margin-bottom:6px;">★ = seg 0 (user first sees output after this)</div>
+      <div class="bar-rows">${bars||'<span style="color:var(--text-3);font-size:11px;">No timing data recorded</span>'}</div>
+    </div>
+  </div>`;
+}
+</script>
+</body>
+</html>
