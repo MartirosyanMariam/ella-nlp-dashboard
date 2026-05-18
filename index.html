@@ -227,7 +227,7 @@
     <span class="top-bar-file" id="tb-filename">—</span>
     <div class="top-bar-right">
       <span class="top-bar-meta" id="tb-meta"></span>
-      <button class="share-btn" id="share-btn" onclick="shareRun()" title="Save results to Google Drive and get a shareable link">🔗 Share results</button>
+      <button class="share-btn" id="share-btn" onclick="shareRun()" title="Download a self-contained HTML snapshot you can share with anyone">⬇ Export snapshot</button>
       <button class="reload-btn" onclick="resetToUpload()">↩ New file</button>
     </div>
   </div>
@@ -407,87 +407,36 @@
 <div id="tt"></div>
 
 <script>
-// ══ share / restore from URL ══
-async function shareRun(){
+// ══ export snapshot (self-contained HTML download) ══
+function shareRun(){
   if(!allR.length)return;
   const btn=document.getElementById('share-btn');
-  btn.textContent='⏳ Saving to Drive…';btn.disabled=true;
+  btn.textContent='⏳ Building…';btn.disabled=true;
   try{
-    const payload=JSON.stringify({
+    const snapshot={
       filename:document.getElementById('tb-filename').textContent,
       meta:document.getElementById('tb-meta').textContent,
       results:allR
-    });
-    const fname=(document.getElementById('tb-filename').textContent||'results').replace(/\.[^.]+$/,'');
-
-    // 1. Get an OAuth token via the Anthropic API (Claude has Drive access)
-    const tokenRes=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1000,
-        mcp_servers:[{type:'url',url:'https://drivemcp.googleapis.com/mcp/v1',name:'gdrive'}],
-        messages:[{role:'user',content:`Upload a file to Google Drive named "ella-nlp-${fname}-snapshot.json" with this exact content (application/json), then make it publicly readable and return ONLY a JSON object like {"fileId":"...","webViewLink":"..."} with no other text:\n\n${payload}`}]
-      })
-    });
-    const tokenData=await tokenRes.json();
-
-    // Extract JSON from Claude's response
-    const textBlock=tokenData.content?.find(b=>b.type==='text');
-    if(!textBlock)throw new Error('No response from Drive upload');
-    const match=textBlock.text.match(/\{[\s\S]*"fileId"[\s\S]*\}/);
-    if(!match)throw new Error('Could not parse Drive response: '+textBlock.text.slice(0,200));
-    const {fileId,webViewLink}=JSON.parse(match[0]);
-
-    // 2. Build shareable dashboard URL
-    // Published Claude artifact URL — user needs to publish first, we use current origin as fallback
-    const base=location.href.split('?')[0].split('#')[0];
-    const shareUrl=`${base}?snapshot=${fileId}`;
-
-    showShareModal(shareUrl, webViewLink, fileId);
+    };
+    // Inject snapshot into a copy of this page's HTML
+    const snapshotScript=`<script>window.__SNAPSHOT__=${JSON.stringify(snapshot)};<\/script>`;
+    const html=document.documentElement.outerHTML.replace(
+      /(<script[^>]*>window\.__SNAPSHOT__[\s\S]*?<\/script>\s*)?(<\/head>)/,
+      snapshotScript+'$2'
+    );
+    const blob=new Blob([html],{type:'text/html'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const fname=(snapshot.filename||'results').replace(/\.[^.]+$/,'');
+    a.href=url;a.download=`ella-nlp-${fname}-snapshot.html`;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    btn.textContent='✓ Downloaded';
+    setTimeout(()=>{btn.textContent='⬇ Export snapshot';btn.disabled=false},2000);
   }catch(e){
-    alert('Share error: '+e.message);
-  }finally{
+    alert('Export error: '+e.message);
     btn.textContent='⬇ Export snapshot';btn.disabled=false;
   }
-}
-
-function showShareModal(shareUrl, driveLink, fileId){
-  document.getElementById('share-modal-bg')?.remove();
-  const bg=document.createElement('div');bg.className='share-modal-bg';bg.id='share-modal-bg';
-  bg.innerHTML=`
-    <div class="share-modal">
-      <h3>Results saved to Drive ✓</h3>
-      <p>Share this dashboard link — anyone who opens it will see your results automatically loaded. Data is stored in your Google Drive.</p>
-      <div style="font-size:11px;font-weight:600;color:var(--text-3);margin-bottom:4px;">Dashboard link (share this)</div>
-      <textarea class="share-url-box" id="share-url-ta" readonly>${shareUrl}</textarea>
-      <div style="font-size:11px;color:var(--text-3);margin-top:8px;">
-        Data file: <a href="${driveLink}" target="_blank" style="color:var(--blue);">View in Google Drive ↗</a>
-        &nbsp;·&nbsp; File ID: <code style="font-size:10px;">${fileId}</code>
-      </div>
-      <div class="share-modal-footer">
-        <span class="share-modal-size">Anyone with the dashboard link can view results</span>
-        <div style="display:flex;gap:8px;">
-          <button class="share-modal-close" onclick="document.getElementById('share-modal-bg').remove()">Close</button>
-          <button class="share-copy-btn" id="share-copy-btn" onclick="copyShareUrl()">Copy link</button>
-        </div>
-      </div>
-    </div>`;
-  bg.addEventListener('click',e=>{if(e.target===bg)bg.remove()});
-  document.body.appendChild(bg);
-  setTimeout(()=>{const ta=document.getElementById('share-url-ta');ta.focus();ta.select()},50);
-}
-
-function copyShareUrl(){
-  const ta=document.getElementById('share-url-ta');
-  ta.select();
-  const btn=document.getElementById('share-copy-btn');
-  try{
-    document.execCommand('copy');
-    btn.textContent='✓ Copied!';btn.classList.add('ok');
-    setTimeout(()=>{btn.textContent='Copy link';btn.classList.remove('ok')},2000);
-  }catch(_){btn.textContent='Select all & Cmd+C'}
 }
 
 
@@ -513,42 +462,14 @@ fi.addEventListener('change',()=>{if(fi.files[0])readF(fi.files[0])});
 function readF(f){const r=new FileReader();r.onload=e=>parse(e.target.result,f.name);r.readAsText(f)}
 function resetToUpload(){document.getElementById('upload-screen').style.display='flex';document.getElementById('dashboard').style.display='none';fi.value='';allR=[];allSegs=[];history.replaceState(null,'',location.pathname+location.search)}
 
-// try restoring from snapshot data injected at export time, or from Drive via ?snapshot=fileId
-window.addEventListener('DOMContentLoaded',async()=>{
-  // 1. baked-in snapshot
+// restore from baked-in snapshot (exported HTML files have __SNAPSHOT__ injected)
+window.addEventListener('DOMContentLoaded',()=>{
   if(window.__SNAPSHOT__){
     try{
       const {filename,meta,results}=window.__SNAPSHOT__;
       loadResults(results,filename,(meta||'')+' · snapshot');
       document.getElementById('share-btn').style.display='none';
-      return;
     }catch(e){console.warn('Snapshot restore failed:',e)}
-  }
-  // 2. Drive snapshot via ?snapshot=fileId
-  const fileId=new URLSearchParams(location.search).get('snapshot');
-  if(fileId){
-    const uploadScreen=document.getElementById('upload-screen');
-    uploadScreen.innerHTML=`<div class="wordmark">Ella NLP · Pipeline QA</div><div class="drop-card" style="cursor:default;"><div class="drop-icon">⏳</div><div class="drop-title">Loading shared results…</div><div class="drop-sub" id="load-status">Fetching from Google Drive</div></div>`;
-    uploadScreen.style.display='flex';
-    try{
-      const res=await fetch(`https://api.anthropic.com/v1/messages`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          model:'claude-sonnet-4-20250514',
-          max_tokens:1000,
-          mcp_servers:[{type:'url',url:'https://drivemcp.googleapis.com/mcp/v1',name:'gdrive'}],
-          messages:[{role:'user',content:`Fetch the Google Drive file with ID "${fileId}" and return its raw text content only, no commentary.`}]
-        })
-      });
-      const data=await res.json();
-      const textBlock=data.content?.find(b=>b.type==='text');
-      if(!textBlock)throw new Error('Empty response');
-      const {filename,meta,results}=JSON.parse(textBlock.text);
-      loadResults(results,filename,(meta||'')+' · shared');
-    }catch(e){
-      document.getElementById('load-status').textContent='Failed to load: '+e.message+'. Ask the sender to re-share.';
-    }
   }
 });
 
