@@ -592,13 +592,31 @@ function renderStability(r){
   const n=r.length;
   const fail=r.filter(x=>x.hasError).length,pass=n-fail;
   const cFail=r.filter(x=>x.hasContentStepError).length,cPass=n-cFail;
-  const crTcs=r.filter(x=>x.contentReadyTime!=null);
-  const crFail=crTcs.filter(x=>x.contentReadyError).length,crPass=crTcs.length-crFail;
-  const s0Tcs=r.filter(x=>x.seg0Time!=null);
-  const s0Fail=s0Tcs.filter(x=>x.hasError).length,s0Pass=s0Tcs.length-s0Fail;
-  const s1pTcs=r.filter(x=>x.seg1pTimes.length>0);
-  const s1pN=s1pTcs.reduce((a,x)=>a+x.seg1pTimes.length,0);
-  const s1pFail=s1pTcs.filter(x=>x.hasError).reduce((a,x)=>a+x.seg1pTimes.length,0),s1pPass=s1pN-s1pFail;
+
+  // Seg 0: n = testcases that passed the content step.
+  // fail = testcases where Seg 0 itself timed out:
+  //   hasError AND seg0Time==null (no successful segment op) AND NOT a content-step error.
+  // Bug in old code: it used s0Tcs.filter(x=>x.hasError) which counted testcases that
+  //   *passed* Seg 0 but failed later (e.g. Seg 3) as Seg 0 failures.
+  const seg0N=n-cFail;
+  const seg0Fail=r.filter(x=>x.hasError&&x.seg0Time==null&&!x.hasContentStepError).length;
+  const seg0Pass=seg0N-seg0Fail;
+
+  // Content ready: n = all testcases (all attempted it).
+  // pass = those that achieved content ready = have contentReadyTime (content step + Seg 0 both succeeded).
+  // Bug in old code: used crTcs.length (=only the passing ones) as n, making crFail always 0.
+  const crPass=r.filter(x=>x.contentReadyTime!=null).length;
+  const crFail=n-crPass; // = cFail + seg0Fail
+
+  // Segs 1+:
+  // pass = total completed Seg 1+ invocations (from successful request segment ops with idx≥1).
+  // fail = one per testcase that timed out on a Seg 1+ call
+  //   (passed Seg 0 but still has hasError → the failure happened at some Seg≥1 attempt).
+  // Bug in old code: counted ALL seg1pTimes of a failed TC as failures — e.g. a TC that
+  //   completed segs 1 & 2 then timed out at seg 3 had both seg1 and seg2 marked as failed.
+  const s1pPass=r.reduce((a,x)=>a+x.seg1pTimes.length,0);
+  const s1pFail=r.filter(x=>x.hasError&&x.seg0Time!=null).length;
+  const s1pN=s1pPass+s1pFail;
 
   function cells(n,pass,fail){
     const rc=n?rateColor(fail/n):'var(--text-3)';
@@ -613,9 +631,9 @@ function renderStability(r){
   const rows=[
     {label:'All testcases',sub:'entire run',cells:cells(n,pass,fail)},
     {label:'Content step',sub:'request content op',accent:'blue',tip:"Errors on the 'request content' operator. Blocks all downstream segment generation.",cells:cells(n,cPass,cFail)},
-    {label:'Content ready',sub:'content step + seg 0',accent:'green',tip:'The moment the user first sees output. Fail = content errored OR no segments produced.',cells:cells(crTcs.length,crPass,crFail)},
-    {label:'Seg 0',sub:'first segment call (per testcase)',accent:'',tip:'First segment call per testcase. Status inherits from parent testcase. n = testcases with ≥1 segment.',cells:cells(s0Tcs.length,s0Pass,s0Fail)},
-    {label:'Segs 1+',sub:'repeat calls (pooled invocations)',accent:'amber',tip:'All repeat segment invocations (idx ≥1) pooled. n = invocations, not testcases.',cells:cells(s1pN,s1pPass,s1pFail)}
+    {label:'Content ready',sub:'content step + seg 0',accent:'green',tip:'The moment the user first sees output. n = all testcases. Fail = content step errored OR Seg 0 timed out before completing.',cells:cells(n,crPass,crFail)},
+    {label:'Seg 0',sub:'first segment call (per testcase)',accent:'',tip:'First segment call per testcase. n = testcases that passed content step. Fail = Seg 0 timed out (error on the request op at segment index 0).',cells:cells(seg0N,seg0Pass,seg0Fail)},
+    {label:'Segs 1+',sub:'repeat calls (pooled invocations)',accent:'amber',tip:'All repeat segment invocations (idx ≥1) pooled. Pass = completed segment ops. Fail = one per testcase whose Seg 1+ call timed out. n = pass + fail.',cells:cells(s1pN,s1pPass,s1pFail)}
   ];
   document.getElementById('stability-gt').innerHTML=gridBlock(cols,rows,'185px');
 }
