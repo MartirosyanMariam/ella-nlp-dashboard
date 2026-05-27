@@ -744,7 +744,7 @@ function renderStability(r){
     </tr>`;
   }
 
-  const noteText=`Content Ready: ${seg0Fail} testcase${seg0Fail!==1?'s':''} failed at Seg 0 · ${crPass} passed → enter Segs 1+ pool &nbsp;·&nbsp; Segs 1+ invocations: ${s1pN} total / ${s1pPass} passed / ${s1pFail} failed`;
+  const noteText=`Seg 0: ${seg0Fail} testcase${seg0Fail!==1?'s':''} failed · ${crPass} passed → enter Segs 1+ pool &nbsp;·&nbsp; Segs 1+: ${pass} fully completed / ${s1pFail} failed at some segment · ${s1pN} total invocations across pool`;
 
   const chevSvg=`<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
@@ -816,13 +816,13 @@ function renderStability(r){
             <div class="stab-chevron" id="stab-chev-segs1plus">${chevSvg}</div>
             <div>
               <div class="stab-row-name">Segs 1+ <span class="stab-chip stab-chip-blue">expandable</span></div>
-              <div class="stab-row-sub">repeat calls — pooled invocations</div>
+              <div class="stab-row-sub">testcases that reached segment 1+</div>
             </div>
           </div></td>
-          <td><span class="stab-num sc-white">${s1pN}</span><div class="stab-sub">invocations</div></td>
-          ${numCell(s1pPass,'invocations passed','sc-green')}
-          ${numCell(s1pFail,'invocations failed',s1pFail?'sc-red':'sc-muted')}
-          ${numCell(fp(s1pN?s1pFail/s1pN:0),'invocation error rate',rateClass(s1pN?s1pFail/s1pN:0))}
+          <td><span class="stab-num sc-white">${crPass}</span><div class="stab-sub">testcases in pool</div></td>
+          ${numCell(pass,'fully completed','sc-green')}
+          ${numCell(s1pFail,s1pFail?fp(s1pFail/crPass)+' of pool':'—',s1pFail?'sc-red':'sc-muted')}
+          ${numCell(fp(crPass?s1pFail/crPass:0),'error rate',rateClass(crPass?s1pFail/crPass:0))}
         </tr>
 
         ${segRowsHtml}
