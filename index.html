@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ella NLP — Test Results Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   :root{
@@ -203,6 +204,61 @@
 
   @media(max-width:1000px){.hero-row{grid-template-columns:repeat(3,1fr)}.col-2,.col-3{grid-template-columns:1fr}}
   @media(max-width:640px){.hero-row{grid-template-columns:repeat(2,1fr)}}
+
+  /* ══ §2 STABILITY — new dark phase-section design ══ */
+  .phase-section{background:#18181b;border:1px solid #2a2a30;border-radius:10px;overflow:hidden;margin:1.75rem 0 .65rem}
+  .phase-header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #2a2a30}
+  .phase-badge{width:24px;height:24px;border-radius:50%;background:#2a2a30;border:1.5px solid #44444c;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#888;flex-shrink:0}
+  .phase-title{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.12em;color:#c8c8ce;text-transform:uppercase}
+  .phase-subtitle{margin-left:auto;font-size:11px;color:#55555f;font-style:italic;white-space:nowrap}
+  /* Override generic table rules inside phase-section */
+  .phase-section table{width:100%;border-collapse:collapse;font-size:inherit}
+  .phase-section thead th{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.1em;color:#55555f;text-transform:uppercase;padding:10px 20px;text-align:left;border-bottom:1px solid #222228;border-bottom-width:1px;position:static;cursor:default;user-select:none;background:transparent;z-index:auto;white-space:normal}
+  .phase-section thead th:hover{color:#55555f}
+  .phase-section thead th.sorted{color:#55555f}
+  .phase-section tbody tr{border-bottom:none;cursor:default;transition:none}
+  .phase-section tbody tr:hover{background:transparent}
+  .phase-section tbody tr:last-child{border-bottom:none}
+  .phase-table tr.phase-row td{padding:16px 20px;border-bottom:1px solid #1e1e24;vertical-align:top}
+  .phase-table tr.phase-row:last-child td{border-bottom:none}
+  /* label cell */
+  .stab-row-label{min-width:200px}
+  .stab-row-inner{display:flex;align-items:flex-start;gap:8px}
+  .stab-row-name{font-size:13px;font-weight:600;color:#dddde0;line-height:1.3}
+  .stab-row-sub{font-size:11px;color:#55555f;margin-top:2px;line-height:1.3}
+  .stab-chevron{flex-shrink:0;width:16px;height:16px;margin-top:1px;color:#55555f;transition:transform .2s ease;cursor:pointer;user-select:none}
+  .stab-chevron svg{display:block}
+  /* big numbers */
+  .stab-num{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:500;line-height:1;display:block}
+  .stab-sub{font-size:10px;color:#55555f;margin-top:4px;font-family:'IBM Plex Mono',monospace}
+  /* colors */
+  .sc-white{color:#e8e8ea}.sc-green{color:#5de88a}.sc-amber{color:#f0b429}.sc-red{color:#f26a6a}.sc-muted{color:#44444c}
+  .sr-0{color:#5de88a}.sr-lo{color:#5de88a}.sr-md{color:#f0b429}.sr-hi{color:#f26a6a}
+  /* row types */
+  tr.stab-summary td{background:#111113}
+  tr.stab-summary .stab-row-name{color:#bbbbc4;font-size:12px}
+  tr.stab-group-parent{cursor:pointer}
+  tr.stab-group-parent:hover td{background:#1f1f25}
+  tr.stab-group-parent td:first-child{border-left:3px solid #f0b429;padding-left:17px}
+  tr.stab-child-l1 td{background:#141418;border-bottom-color:#1a1a20}
+  tr.stab-child-l1 td:first-child{border-left:3px solid #3e3e4a;padding-left:40px}
+  tr.stab-child-l1 .stab-row-name{font-size:12px;color:#aaaaaf}
+  tr.stab-child-l1 .stab-num{font-size:20px}
+  tr.stab-segs-parent td:first-child{border-left:3px solid #3d5a99;padding-left:17px}
+  tr.stab-segs-parent{cursor:pointer}
+  tr.stab-segs-parent:hover td{background:#1f1f25}
+  tr.stab-seg-child{display:none}
+  tr.stab-seg-child td{background:#141418;border-bottom-color:#1a1a20;padding:11px 20px}
+  tr.stab-seg-child td:first-child{border-left:3px solid #2a3a55;padding-left:40px}
+  tr.stab-seg-child .stab-row-name{font-size:12px;color:#7a7a88}
+  tr.stab-seg-child .stab-num{font-size:18px}
+  tr.stab-seg-tail td{background:#111113;border-bottom-color:#1a1a20;padding:9px 20px;opacity:.7}
+  tr.stab-seg-tail td:first-child{border-left:3px solid #1e2a3a;padding-left:40px}
+  tr.stab-seg-tail .stab-row-name{font-size:11px;color:#55555f}
+  tr.stab-phase-sep td{padding:0;background:#111113;border-bottom:2px solid #222228}
+  .stab-note{font-size:10px;color:#44444c;font-family:'IBM Plex Mono',monospace;padding:8px 20px;border-top:1px solid #1e1e24;background:#111113;letter-spacing:.04em}
+  .stab-chip{display:inline-block;font-size:9px;font-family:'IBM Plex Mono',monospace;letter-spacing:.06em;padding:2px 6px;border-radius:3px;background:#2a2a34;color:#666;margin-left:6px;vertical-align:middle}
+  .stab-chip-blue{background:#1e2b42;color:#5a8ad4}
 </style>
 </head>
 <body>
@@ -247,12 +303,7 @@
     <!-- ══════════════════════════════════
          §2  STABILITY  (pass/fail by phase)
     ══════════════════════════════════ -->
-    <div class="section-hd">
-      <span class="section-num">2</span>
-      <span class="section-title">Stability by pipeline phase</span>
-      <span class="section-desc">Pass / fail counts and error rates — where in the pipeline are things breaking?</span>
-    </div>
-    <div class="gt-wrap" id="stability-gt"></div>
+    <div id="stability-gt"></div>
 
     <!-- ══════════════════════════════════
          §3  LATENCY  (by phase)
@@ -588,54 +639,198 @@ function gridBlock(cols,rows,labelW='175px'){
 }
 
 // ══ §2 STABILITY ══
+const stabState={'content-ready':false,'segs1plus':false};
+function stabToggle(group){
+  stabState[group]=!stabState[group];
+  const open=stabState[group];
+  const chev=document.getElementById('stab-chev-'+group);
+  if(chev){chev.style.transform=open?'rotate(90deg)':'rotate(0deg)';chev.style.color=open?'#f0b429':'#55555f';}
+  document.querySelectorAll('.stab-'+group+'-child').forEach(row=>{row.style.display=open?'table-row':'none';});
+}
+
 function renderStability(r){
+  // reset expand state each re-render
+  stabState['content-ready']=false;
+  stabState['segs1plus']=false;
+
   const n=r.length;
   const fail=r.filter(x=>x.hasError).length,pass=n-fail;
   const cFail=r.filter(x=>x.hasContentStepError).length,cPass=n-cFail;
 
-  // Seg 0: n = testcases that passed the content step.
-  // fail = testcases where Seg 0 itself timed out:
-  //   hasError AND seg0Time==null (no successful segment op) AND NOT a content-step error.
-  // Bug in old code: it used s0Tcs.filter(x=>x.hasError) which counted testcases that
-  //   *passed* Seg 0 but failed later (e.g. Seg 3) as Seg 0 failures.
+  // Seg 0 failures: hasError AND no successful segment op AND not a content-step error
   const seg0N=n-cFail;
   const seg0Fail=r.filter(x=>x.hasError&&x.seg0Time==null&&!x.hasContentStepError).length;
   const seg0Pass=seg0N-seg0Fail;
 
-  // Content ready: n = all testcases (all attempted it).
-  // pass = those that achieved content ready = have contentReadyTime (content step + Seg 0 both succeeded).
-  // Bug in old code: used crTcs.length (=only the passing ones) as n, making crFail always 0.
+  // Content ready: n = all testcases; fail = those that never produced first output
   const crPass=r.filter(x=>x.contentReadyTime!=null).length;
-  const crFail=n-crPass; // = cFail + seg0Fail
+  const crFail=n-crPass;
 
-  // Segs 1+:
-  // pass = total completed Seg 1+ invocations (from successful request segment ops with idx≥1).
-  // fail = one per testcase that timed out on a Seg 1+ call
-  //   (passed Seg 0 but still has hasError → the failure happened at some Seg≥1 attempt).
-  // Bug in old code: counted ALL seg1pTimes of a failed TC as failures — e.g. a TC that
-  //   completed segs 1 & 2 then timed out at seg 3 had both seg1 and seg2 marked as failed.
+  // Segs 1+: pass = completed seg-1+ ops; fail = 1 per TC that timed out on a Seg≥1 call
   const s1pPass=r.reduce((a,x)=>a+x.seg1pTimes.length,0);
   const s1pFail=r.filter(x=>x.hasError&&x.seg0Time!=null).length;
   const s1pN=s1pPass+s1pFail;
 
-  function cells(n,pass,fail){
-    const rc=n?rateColor(fail/n):'var(--text-3)';
-    return[
-      {v:String(n),s:'total'},
-      {v:String(pass),s:n?fp(pass/n)+' pass rate':'—',color:'var(--green)'},
-      {v:String(fail),s:n&&fail?fp(fail/n)+' of total':'—',color:fail?'var(--red)':'var(--green)'},
-      {v:n?fp(fail/n):'—',s:'error rate',color:rc}
-    ];
+  // Per-segment stats for Segs 1+
+  // Seg N pass  = segTimes.length > N  (completed Seg N successfully)
+  // Seg N fail  = hasError && segTimes.length === N (failed exactly at Seg N)
+  const maxSegIdx=r.reduce((a,x)=>Math.max(a,x.segTimes.length),0); // max segs completed
+  const segRowData=[];
+  for(let N=1;N<=maxSegIdx;N++){
+    const p=r.filter(x=>x.segTimes.length>N).length;
+    const f=r.filter(x=>x.hasError&&x.segTimes.length===N&&!x.hasContentStepError).length;
+    const t=p+f;
+    if(t===0)continue;
+    segRowData.push({N,p,f,t});
   }
-  const cols=[{label:'Total (n)'},{label:'Passed'},{label:'Failed'},{label:'Error rate',tip:'Red >15%, amber 5–15%, green <5%'}];
-  const rows=[
-    {label:'All testcases',sub:'entire run',cells:cells(n,pass,fail)},
-    {label:'Content step',sub:'request content op',accent:'blue',tip:"Errors on the 'request content' operator. Blocks all downstream segment generation.",cells:cells(n,cPass,cFail)},
-    {label:'Content ready',sub:'content step + seg 0',accent:'green',tip:'The moment the user first sees output. n = all testcases. Fail = content step errored OR Seg 0 timed out before completing.',cells:cells(n,crPass,crFail)},
-    {label:'Seg 0',sub:'first segment call (per testcase)',accent:'',tip:'First segment call per testcase. n = testcases that passed content step. Fail = Seg 0 timed out (error on the request op at segment index 0).',cells:cells(seg0N,seg0Pass,seg0Fail)},
-    {label:'Segs 1+',sub:'repeat calls (pooled invocations)',accent:'amber',tip:'All repeat segment invocations (idx ≥1) pooled. Pass = completed segment ops. Fail = one per testcase whose Seg 1+ call timed out. n = pass + fail.',cells:cells(s1pN,s1pPass,s1pFail)}
-  ];
-  document.getElementById('stability-gt').innerHTML=gridBlock(cols,rows,'185px');
+
+  function rateClass(rate){
+    if(rate<=0)return'sr-0';
+    if(rate<=0.05)return'sr-lo';
+    if(rate<=0.15)return'sr-md';
+    return'sr-hi';
+  }
+  function numCell(val,sub,colorCls,small){
+    const sz=small?` style="font-size:16px"`:'';
+    return`<td><span class="stab-num ${colorCls}"${sz}>${val}</span><div class="stab-sub">${sub}</div></td>`;
+  }
+  function statsRow(t,p,f,invLabel){
+    const rate=t?f/t:0;
+    const pSub=t?fp(p/t)+' pass rate':'—';
+    const fSub=f?fp(f/t)+' of '+(invLabel||'total'):'—';
+    return numCell(t,'total','sc-white')+
+      numCell(p,pSub,'sc-green')+
+      numCell(f,fSub,f?'sc-red':'sc-muted')+
+      numCell(fp(rate),'error rate',rateClass(rate));
+  }
+
+  // Individual seg rows (up to SHOW_LIMIT individually, group rest as tail)
+  const SHOW_LIMIT=11;
+  let segRowsHtml='';
+  const tailData=[];
+  for(const s of segRowData){
+    if(s.N<=SHOW_LIMIT){
+      const rate=s.t?s.f/s.t:0;
+      const sub=`testcases with ${s.N+1}+ segments`;
+      segRowsHtml+=`<tr class="phase-row stab-seg-child stab-segs1plus-child">
+        <td class="stab-row-label"><div class="stab-row-inner"><div>
+          <div class="stab-row-name">Seg ${s.N}</div>
+          <div class="stab-row-sub" style="color:#3a5070">${sub}</div>
+        </div></div></td>
+        ${numCell(s.t,'invocations','sc-white',true)}
+        ${numCell(s.p,fp(s.t?s.p/s.t:0)+' pass rate','sc-green',true)}
+        ${numCell(s.f,s.f?fp(s.f/s.t)+' of total':'—',s.f?'sc-red':'sc-muted',true)}
+        ${numCell(fp(rate),'error rate',rateClass(rate),true)}
+      </tr>`;
+    } else {
+      tailData.push(s);
+    }
+  }
+  if(tailData.length>0){
+    const tT=tailData.reduce((a,x)=>a+x.t,0);
+    const tP=tailData.reduce((a,x)=>a+x.p,0);
+    const tF=tailData.reduce((a,x)=>a+x.f,0);
+    const tRate=tT?tF/tT:0;
+    const label=tailData.length===1?`Seg ${tailData[0].N}`:`Seg ${tailData[0].N}–${tailData[tailData.length-1].N}`;
+    segRowsHtml+=`<tr class="phase-row stab-seg-child stab-seg-tail stab-segs1plus-child">
+      <td class="stab-row-label"><div class="stab-row-inner"><div>
+        <div class="stab-row-name">${label} <span class="stab-chip">tail</span></div>
+        <div class="stab-row-sub" style="color:#2a3a4a">pooled · ${tF} edge failure${tF!==1?'s':''}</div>
+      </div></div></td>
+      ${numCell(tT,'invocations','sc-white',true)}
+      ${numCell(tP,tT?fp(tP/tT)+' pass rate':'—','sc-green',true)}
+      ${numCell(tF,tF?fp(tF/tT)+' of total':'—',tF?'sc-red':'sc-muted',true)}
+      ${numCell(fp(tRate),'error rate',rateClass(tRate),true)}
+    </tr>`;
+  }
+
+  const noteText=`Content Ready: ${seg0Fail} testcase${seg0Fail!==1?'s':''} failed at Seg 0 · ${crPass} passed → enter Segs 1+ pool &nbsp;·&nbsp; Segs 1+ invocations: ${s1pN} total / ${s1pPass} passed / ${s1pFail} failed`;
+
+  const chevSvg=`<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+  document.getElementById('stability-gt').innerHTML=`
+  <div class="phase-section">
+    <div class="phase-header">
+      <div class="phase-badge">2</div>
+      <div class="phase-title">Stability by Pipeline Phase</div>
+      <div class="phase-subtitle">Pass / fail counts and error rates — where in the pipeline are things breaking?</div>
+    </div>
+    <table class="phase-table">
+      <thead><tr>
+        <th style="width:220px"></th>
+        <th style="width:180px">Total (N)</th>
+        <th style="width:220px">Passed</th>
+        <th style="width:220px">Failed</th>
+        <th>Error Rate</th>
+      </tr></thead>
+      <tbody>
+
+        <!-- All testcases summary -->
+        <tr class="phase-row stab-summary">
+          <td class="stab-row-label"><div class="stab-row-inner"><div>
+            <div class="stab-row-name">All testcases</div>
+            <div class="stab-row-sub">entire run</div>
+          </div></div></td>
+          ${statsRow(n,pass,fail)}
+        </tr>
+
+        <!-- Content Ready parent (expandable) -->
+        <tr class="phase-row stab-group-parent" onclick="stabToggle('content-ready')">
+          <td class="stab-row-label"><div class="stab-row-inner">
+            <div class="stab-chevron" id="stab-chev-content-ready">${chevSvg}</div>
+            <div>
+              <div class="stab-row-name">Content Ready <span class="stab-chip">phase</span></div>
+              <div class="stab-row-sub">content step + seg 0</div>
+            </div>
+          </div></td>
+          ${statsRow(n,crPass,crFail)}
+        </tr>
+
+        <!-- Content Step child -->
+        <tr class="phase-row stab-child-l1 stab-content-ready-child" style="display:none">
+          <td class="stab-row-label"><div class="stab-row-inner"><div>
+            <div class="stab-row-name">Content Step</div>
+            <div class="stab-row-sub">request content op</div>
+          </div></div></td>
+          ${statsRow(n,cPass,cFail)}
+        </tr>
+
+        <!-- Seg 0 child -->
+        <tr class="phase-row stab-child-l1 stab-content-ready-child" style="display:none">
+          <td class="stab-row-label"><div class="stab-row-inner"><div>
+            <div class="stab-row-name">Seg 0</div>
+            <div class="stab-row-sub">first segment call (per testcase)</div>
+          </div></div></td>
+          <td><span class="stab-num sc-white">${seg0N}</span><div class="stab-sub">↳ from content step</div></td>
+          ${numCell(seg0Pass,fp(seg0N?seg0Pass/seg0N:0)+' pass rate','sc-green')}
+          ${numCell(seg0Fail,seg0Fail?fp(seg0Fail/seg0N)+' of total':'—',seg0Fail?'sc-red':'sc-muted')}
+          ${numCell(fp(seg0N?seg0Fail/seg0N:0),'error rate',rateClass(seg0N?seg0Fail/seg0N:0))}
+        </tr>
+
+        <!-- Phase separator -->
+        <tr class="phase-row stab-phase-sep"><td colspan="5"></td></tr>
+
+        <!-- Segs 1+ parent (expandable) -->
+        <tr class="phase-row stab-segs-parent" onclick="stabToggle('segs1plus')">
+          <td class="stab-row-label"><div class="stab-row-inner">
+            <div class="stab-chevron" id="stab-chev-segs1plus">${chevSvg}</div>
+            <div>
+              <div class="stab-row-name">Segs 1+ <span class="stab-chip stab-chip-blue">expandable</span></div>
+              <div class="stab-row-sub">repeat calls — pooled invocations</div>
+            </div>
+          </div></td>
+          <td><span class="stab-num sc-white">${s1pN}</span><div class="stab-sub">invocations</div></td>
+          ${numCell(s1pPass,'invocations passed','sc-green')}
+          ${numCell(s1pFail,'invocations failed',s1pFail?'sc-red':'sc-muted')}
+          ${numCell(fp(s1pN?s1pFail/s1pN:0),'invocation error rate',rateClass(s1pN?s1pFail/s1pN:0))}
+        </tr>
+
+        ${segRowsHtml}
+
+      </tbody>
+    </table>
+    <div class="stab-note">${noteText}</div>
+  </div>`;
 }
 
 // ══ §3 LATENCY ══
