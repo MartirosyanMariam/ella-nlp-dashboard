@@ -4,7 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ella NLP — Test Results Dashboard</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
+// ── Fix 7: jump nav scroll show/hide ──
+window.addEventListener('scroll',()=>{
+  const nav=document.getElementById('jump-nav');
+  if(nav)nav.style.display=window.scrollY>200?'flex':'none';
+},{passive:true});
+</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -86,7 +92,7 @@
   .tip-i{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:var(--surface2);color:var(--text-3);font-size:8px;font-weight:700;cursor:default;border:1px solid var(--border-md);flex-shrink:0}
 
   /* ── HERO KPI row (Section 1) ── */
-  .hero-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+  .hero-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px}
   .hero-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.9rem 1rem;position:relative;overflow:hidden}
   .hero-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
   .hero-card.c-neutral::before{background:var(--border-md)}
@@ -151,7 +157,7 @@
   .istat-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);white-space:nowrap}
 
   /* ── tables ── */
-  .tbl-scroll{overflow:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);max-height:300px}
+  .tbl-scroll{overflow:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);max-height:520px}
   table{width:100%;border-collapse:collapse;font-size:12px}
   thead th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);padding:7px 11px;border-bottom:2px solid var(--border-md);white-space:nowrap;position:sticky;top:0;background:var(--surface);cursor:pointer;user-select:none;z-index:2}
   thead th:hover{color:var(--text-2)}
@@ -207,59 +213,62 @@
   @media(max-width:640px){.hero-row{grid-template-columns:repeat(2,1fr)}}
 
   /* ══ §2 STABILITY — new dark phase-section design ══ */
-  .phase-section{background:#18181b;border:1px solid #2a2a30;border-radius:10px;overflow:hidden;margin:1.75rem 0 .65rem}
-  .phase-header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #2a2a30}
-  .phase-badge{width:24px;height:24px;border-radius:50%;background:#2a2a30;border:1.5px solid #44444c;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#888;flex-shrink:0}
-  .phase-title{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.12em;color:#c8c8ce;text-transform:uppercase}
-  .phase-subtitle{margin-left:auto;font-size:11px;color:#55555f;font-style:italic;white-space:nowrap}
+  .phase-section{background:var(--surface);border:1px solid var(--border-md);border-radius:10px;overflow:hidden;margin:1.75rem 0 .65rem}
+  .phase-header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border-md)}
+  .phase-badge{width:24px;height:24px;border-radius:50%;background:var(--border-md);border:1.5px solid var(--border-md);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-3);flex-shrink:0}
+  .phase-title{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.12em;color:var(--text-2);text-transform:uppercase}
+  .phase-subtitle{margin-left:auto;font-size:11px;color:var(--text-3);font-style:italic;white-space:nowrap}
   /* Override generic table rules inside phase-section */
   .phase-section table{width:100%;border-collapse:collapse;font-size:inherit}
-  .phase-section thead th{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.1em;color:#55555f;text-transform:uppercase;padding:10px 20px;text-align:left;border-bottom:1px solid #222228;border-bottom-width:1px;position:static;cursor:default;user-select:none;background:transparent;z-index:auto;white-space:normal}
-  .phase-section thead th:hover{color:#55555f}
-  .phase-section thead th.sorted{color:#55555f}
+  .phase-section thead th{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--text-3);text-transform:uppercase;padding:10px 20px;text-align:left;border-bottom:1px solid var(--border-md);border-bottom-width:1px;position:static;cursor:default;user-select:none;background:transparent;z-index:auto;white-space:normal}
+  .phase-section thead th:hover{color:var(--text-3)}
+  .phase-section thead th.sorted{color:var(--text-3)}
   .phase-section tbody tr{border-bottom:none;cursor:default;transition:none}
   .phase-section tbody tr:hover{background:transparent}
   .phase-section tbody tr:last-child{border-bottom:none}
-  .phase-table tr.phase-row td{padding:16px 20px;border-bottom:1px solid #1e1e24;vertical-align:top}
+  .phase-table tr.phase-row td{padding:16px 20px;border-bottom:1px solid var(--border);vertical-align:top}
   .phase-table tr.phase-row:last-child td{border-bottom:none}
   /* label cell */
   .stab-row-label{min-width:200px}
   .stab-row-inner{display:flex;align-items:flex-start;gap:8px}
-  .stab-row-name{font-size:13px;font-weight:600;color:#dddde0;line-height:1.3}
-  .stab-row-sub{font-size:11px;color:#55555f;margin-top:2px;line-height:1.3}
-  .stab-chevron{flex-shrink:0;width:16px;height:16px;margin-top:1px;color:#55555f;transition:transform .2s ease;cursor:pointer;user-select:none}
+  .stab-row-name{font-size:13px;font-weight:600;color:var(--text);line-height:1.3}
+  .stab-row-sub{font-size:11px;color:var(--text-3);margin-top:2px;line-height:1.3}
+  .stab-chevron{flex-shrink:0;width:16px;height:16px;margin-top:1px;color:var(--text-3);transition:transform .2s ease;cursor:pointer;user-select:none}
   .stab-chevron svg{display:block}
   /* big numbers */
-  .stab-num{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:500;line-height:1;display:block}
-  .stab-sub{font-size:10px;color:#55555f;margin-top:4px;font-family:'IBM Plex Mono',monospace}
+  .stab-num{font-family:var(--mono);font-size:26px;font-weight:500;line-height:1;display:block}
+  .stab-sub{font-size:10px;color:var(--text-3);margin-top:4px;font-family:var(--mono)}
   /* colors */
-  .sc-white{color:#e8e8ea}.sc-green{color:#5de88a}.sc-amber{color:#f0b429}.sc-red{color:#f26a6a}.sc-muted{color:#44444c}
+  .sc-white{color:#e8e8ea}.sc-green{color:#5de88a}.sc-amber{color:#f0b429}.sc-red{color:#f26a6a}.sc-muted{color:var(--border-md)}
   .sr-0{color:#5de88a}.sr-lo{color:#5de88a}.sr-md{color:#f0b429}.sr-hi{color:#f26a6a}
   /* row types */
-  tr.stab-summary td{background:#111113}
-  tr.stab-summary .stab-row-name{color:#bbbbc4;font-size:12px}
+  tr.stab-summary td{background:var(--surface2)}
+  tr.stab-summary .stab-row-name{color:var(--text-2);font-size:12px}
   tr.stab-group-parent{cursor:pointer}
-  tr.stab-group-parent:hover td{background:#1f1f25}
+  tr.stab-group-parent:hover td{background:var(--surface2)}
   tr.stab-group-parent td:first-child{border-left:3px solid #f0b429;padding-left:17px}
-  tr.stab-child-l1 td{background:#141418;border-bottom-color:#1a1a20}
-  tr.stab-child-l1 td:first-child{border-left:3px solid #3e3e4a;padding-left:40px}
-  tr.stab-child-l1 .stab-row-name{font-size:12px;color:#aaaaaf}
+  tr.stab-child-l1 td{background:var(--surface);border-bottom-color:var(--border)}
+  tr.stab-child-l1 td:first-child{border-left:3px solid var(--border-md);padding-left:40px}
+  tr.stab-child-l1 .stab-row-name{font-size:12px;color:var(--text-2)}
   tr.stab-child-l1 .stab-num{font-size:20px}
   tr.stab-segs-parent td:first-child{border-left:3px solid #3d5a99;padding-left:17px}
   tr.stab-segs-parent{cursor:pointer}
-  tr.stab-segs-parent:hover td{background:#1f1f25}
+  tr.stab-segs-parent:hover td{background:var(--surface2)}
   tr.stab-seg-child{display:none}
-  tr.stab-seg-child td{background:#141418;border-bottom-color:#1a1a20;padding:11px 20px}
+  tr.stab-seg-child td{background:var(--surface);border-bottom-color:var(--border);padding:11px 20px}
   tr.stab-seg-child td:first-child{border-left:3px solid #2a3a55;padding-left:40px}
-  tr.stab-seg-child .stab-row-name{font-size:12px;color:#7a7a88}
+  tr.stab-seg-child .stab-row-name{font-size:12px;color:var(--text-3)}
   tr.stab-seg-child .stab-num{font-size:18px}
-  tr.stab-seg-tail td{background:#111113;border-bottom-color:#1a1a20;padding:9px 20px;opacity:.7}
+  tr.stab-seg-tail td{background:var(--surface2);border-bottom-color:var(--border);padding:9px 20px;opacity:.7}
   tr.stab-seg-tail td:first-child{border-left:3px solid #1e2a3a;padding-left:40px}
-  tr.stab-seg-tail .stab-row-name{font-size:11px;color:#55555f}
-  tr.stab-phase-sep td{padding:0;background:#111113;border-bottom:2px solid #222228}
-  .stab-note{font-size:10px;color:#44444c;font-family:'IBM Plex Mono',monospace;padding:8px 20px;border-top:1px solid #1e1e24;background:#111113;letter-spacing:.04em}
-  .stab-chip{display:inline-block;font-size:9px;font-family:'IBM Plex Mono',monospace;letter-spacing:.06em;padding:2px 6px;border-radius:3px;background:#2a2a34;color:#666;margin-left:6px;vertical-align:middle}
+  tr.stab-seg-tail .stab-row-name{font-size:11px;color:var(--text-3)}
+  tr.stab-phase-sep td{padding:0;background:var(--surface2);border-bottom:2px solid var(--border-md)}
+  .stab-note{font-size:10px;color:var(--border-md);font-family:var(--mono);padding:8px 20px;border-top:1px solid var(--border);background:var(--surface2);letter-spacing:.04em}
+  .stab-chip{display:inline-block;font-size:9px;font-family:var(--mono);letter-spacing:.06em;padding:2px 6px;border-radius:3px;background:var(--surface2);color:var(--text-3);margin-left:6px;vertical-align:middle}
   .stab-chip-blue{background:#1e2b42;color:#5a8ad4}
+  /* ── jump nav ── */
+  .jnav-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:transparent;color:var(--text-2);cursor:pointer;text-align:left;font-family:var(--font);width:100%}
+  .jnav-btn:hover{background:var(--surface2);color:var(--text)}
 </style>
 </head>
 <body>
@@ -289,12 +298,23 @@
     </div>
   </div>
 
+  <!-- ── sticky jump navigation ── -->
+  <div id="jump-nav" style="display:none;position:fixed;bottom:20px;right:20px;z-index:200;background:var(--surface);border:1px solid var(--border-md);border-radius:10px;padding:6px;flex-direction:column;gap:3px;box-shadow:0 4px 16px rgba(0,0,0,0.12);">
+    <div style="font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--text-3);text-transform:uppercase;padding:2px 6px 4px;">Jump to</div>
+    <button onclick="document.getElementById('sec1').scrollIntoView({behavior:'smooth'})" class="jnav-btn">§1 Overview</button>
+    <button onclick="document.getElementById('stability-gt').scrollIntoView({behavior:'smooth'})" class="jnav-btn">§2 Stability</button>
+    <button onclick="document.getElementById('latency-gt').scrollIntoView({behavior:'smooth'})" class="jnav-btn">§3 Latency</button>
+    <button onclick="document.getElementById('sec4').scrollIntoView({behavior:'smooth'})" class="jnav-btn">§4 Failures</button>
+    <button onclick="document.getElementById('sec5').scrollIntoView({behavior:'smooth'})" class="jnav-btn">§5 Testcases</button>
+    <button onclick="document.getElementById('sec6').scrollIntoView({behavior:'smooth'})" class="jnav-btn">§6 Segments</button>
+  </div>
+
   <div class="main">
 
     <!-- ══════════════════════════════════
          §1  RUN SUMMARY  (at-a-glance KPIs)
     ══════════════════════════════════ -->
-    <div class="section-hd">
+    <div id="sec1" class="section-hd">
       <span class="section-num">1</span>
       <span class="section-title">Run summary</span>
       <span class="section-desc">At-a-glance health of the full test run</span>
@@ -327,7 +347,7 @@
     <!-- ══════════════════════════════════
          §4  FAILURE BREAKDOWN
     ══════════════════════════════════ -->
-    <div class="section-hd">
+    <div id="sec4" class="section-hd">
       <span class="section-num">4</span>
       <span class="section-title">Failure breakdown</span>
       <span class="section-desc">What kinds of failures, where, and across which dimensions?</span>
@@ -343,14 +363,14 @@
       <div class="card">
         <div class="card-title">Error / issue type <span class="tip-i" data-tip="Error types detected in this run. Slow = completed without error but ≥2.5× the run median E2E time.">?</span></div>
         <div style="display:flex;align-items:center;gap:1.25rem;">
-          <div style="position:relative;width:100px;height:100px;flex-shrink:0;"><canvas id="donutChart"></canvas></div>
+          <div style="position:relative;width:100px;height:100px;flex-shrink:0;"><canvas id="donutChart"></canvas><noscript><p style="font-size:11px;color:var(--text-3);margin-top:6px;">Enable JavaScript to view chart.</p></noscript></div>
           <div id="donut-legend" style="display:flex;flex-direction:column;gap:7px;font-size:12px;"></div>
         </div>
       </div>
       <!-- 4b CEFR -->
       <div class="card">
         <div class="card-title">Error rate by CEFR <span class="tip-i" data-tip="Stacked bar: green = pass, red = fail. Helps spot if a specific difficulty level is disproportionately failing.">?</span></div>
-        <div style="position:relative;height:130px;"><canvas id="cefrChart"></canvas></div>
+        <div style="position:relative;height:130px;"><canvas id="cefrChart"></canvas><noscript><p style="font-size:11px;color:var(--text-3);margin-top:6px;">Enable JavaScript to view chart.</p></noscript></div>
       </div>
       <!-- 4c cascade / silent -->
       <div class="card">
@@ -362,13 +382,13 @@
     <!-- 4d lang pair -->
     <div class="card" style="margin-top:14px;">
       <div class="card-title">Error rate by language pair <span class="tip-i" data-tip="Top 10 pairs by volume. Red >15%, amber 5–15%, green <5%.">?</span></div>
-      <div style="position:relative;height:180px;"><canvas id="pairChart"></canvas></div>
+      <div style="position:relative;height:180px;"><canvas id="pairChart"></canvas><noscript><p style="font-size:11px;color:var(--text-3);margin-top:6px;">Enable JavaScript to view chart.</p></noscript></div>
     </div>
 
     <!-- ══════════════════════════════════
          §5  TESTCASE TABLE
     ══════════════════════════════════ -->
-    <div class="section-hd">
+    <div id="sec5" class="section-hd">
       <span class="section-num">5</span>
       <span class="section-title">Testcases</span>
       <span class="section-desc">One row per testcase · click to expand · stats update with filters</span>
@@ -421,7 +441,7 @@
     <!-- ══════════════════════════════════
          §6  SEGMENT TABLE
     ══════════════════════════════════ -->
-    <div class="section-hd">
+    <div id="sec6" class="section-hd">
       <span class="section-num">6</span>
       <span class="section-title">Segment-level view</span>
       <span class="section-desc">One row per invocation · isolate cold-start (Seg 0) vs warm (Seg 1+) · stats update with filters</span>
@@ -522,7 +542,7 @@ function moveTip(e){tt.style.left='0';tt.style.top='0';const w=tt.offsetWidth,h=
 
 // ══ state ══
 let allR=[],allSegs=[],charts={};
-let scTc='totalTime',sdTc=-1,scSg='time',sdSg=-1,expandedRow=null;
+let scTc='_sortKey',sdTc=1,scSg='time',sdSg=-1,expandedRow=null;
 
 // ══ upload ══
 const dz=document.getElementById('drop-zone'),fi=document.getElementById('file-input');
@@ -555,6 +575,14 @@ function loadResults(results,filename,metaLabel){
   document.getElementById('tb-filename').textContent=filename||'snapshot';
   document.getElementById('tb-meta').textContent=metaLabel||'';
   render(allR);
+  stabToggle('content-ready');
+  latToggle('content-ready');
+  latToggle('segs1plus');
+  // Fix 6c: auto-apply #errors filter from URL hash
+  if(window.location.hash==='#errors'){
+    const sel=document.getElementById('f-status');
+    if(sel){sel.value='error';expandedRow=null;renderTcTable();}
+  }
 }
 
 // ══ parse ══
@@ -683,16 +711,36 @@ function renderHero(r){
   const errR=n?fail/n:0;
   const crTimes=r.map(x=>x.contentReadyTime).filter(v=>v!=null);
   const totTimes=r.map(x=>x.totalTime).filter(v=>v!=null);
-  const c504=r.filter(x=>x.errType==='504').length,c500=r.filter(x=>x.errType==='500').length;
+  const c504=r.filter(x=>x.errType==='504').length;
+  const c500=r.filter(x=>x.errType==='500').length;
   const cSlow=r.filter(x=>x.isSlow).length;
-  const subErr=`${c504} timeout · ${c500} server err${cSlow?' · '+cSlow+' slow':''}`;
+  const silentZeroSeg=r.filter(x=>x.isZeroSeg&&!x.hasContentStepError).length;
+  // Worst pair: highest combined error+slow rate (min 5 tests)
+  const pm={};
+  for(const x of r){
+    if(!pm[x.pair])pm[x.pair]={t:0,issues:0};
+    pm[x.pair].t++;
+    if(x.hasError||x.isSlow)pm[x.pair].issues++;
+  }
+  let worstPair=null,worstRate=0,worstIssues=0;
+  for(const[pair,v]of Object.entries(pm)){
+    if(v.t<5)continue;
+    const rate=v.issues/v.t;
+    if(rate>worstRate){worstRate=rate;worstPair=pair;worstIssues=v.issues;}
+  }
+  const worstShort=worstPair?worstPair.replace(/-[A-Z]{2}/g,''):null;
+  const worstAccent=worstRate>0.2?'c-red':worstRate>0.1?'c-amber':'c-neutral';
+  const worstValColor=worstRate>0.2?'v-red':worstRate>0.1?'v-amber':'';
   document.getElementById('hero-row').innerHTML=`
     <div class="hero-card c-neutral"><div class="hc-label">Total tests</div><div class="hc-val">${n}</div><div class="hc-sub">in this run</div></div>
     <div class="hero-card c-green"><div class="hc-label">Passed</div><div class="hc-val v-green">${pass}</div><div class="hc-sub">${fp(n?pass/n:0)} pass rate</div></div>
-    <div class="hero-card ${errR>0.05?'c-red':'c-green'}"><div class="hc-label">Failed</div><div class="hc-val ${errR>0.05?'v-red':'v-green'}">${fail}</div><div class="hc-sub">${fp(errR)} error rate</div></div>
-    <div class="hero-card ${errR>0.15?'c-red':errR>0.05?'c-amber':'c-green'}"><div class="hc-label">Error rate</div><div class="hc-val ${errR>0.15?'v-red':errR>0.05?'v-amber':'v-green'}">${fp(errR)}</div><div class="hc-sub">${subErr}</div></div>
+    <div class="hero-card c-amber"><div class="hc-label">504 Timeouts</div><div class="hc-val v-amber">${c504}</div><div class="hc-sub">infra / capacity</div></div>
+    <div class="hero-card c-red"><div class="hc-label">500 Errors</div><div class="hc-val v-red">${c500}</div><div class="hc-sub">code-level failures</div></div>
+    <div class="hero-card c-red" data-tip="Content step reported success but produced no segments — harder to detect, no error surfaced to the user."><div class="hc-label">Silent zero-seg <span class="tip-i" data-tip="Content step reported success but produced no segments — harder to detect, no error surfaced to the user.">?</span></div><div class="hc-val v-red">${silentZeroSeg}</div><div class="hc-sub">content passed, 0 segs produced</div></div>
+    <div class="hero-card ${errR>0.15?'c-red':errR>0.05?'c-amber':'c-green'}"><div class="hc-label">Error rate</div><div class="hc-val ${errR>0.15?'v-red':errR>0.05?'v-amber':'v-green'}">${fp(errR)}</div><div class="hc-sub">${cSlow?cSlow+' slow · ':''} ${fail} errored</div></div>
     <div class="hero-card c-blue"><div class="hc-label">Median content ready <span class="tip-i" data-tip="Median of content step + Seg 0 combined — the latency a user actually experiences before seeing first output.">?</span></div><div class="hc-val">${fmt(med(crTimes))}</div><div class="hc-sub">avg ${fmt(avg(crTimes))} · p90 ${fmt(pct(crTimes,90))}</div></div>
     <div class="hero-card c-neutral"><div class="hc-label">Median E2E</div><div class="hc-val">${fmt(med(totTimes))}</div><div class="hc-sub">avg ${fmt(avg(totTimes))} · p90 ${fmt(pct(totTimes,90))}</div></div>
+    ${worstShort?`<div class="hero-card ${worstAccent}" data-tip="Language pair with highest combined error + slow rate (min 5 tests)."><div class="hc-label">Worst pair <span class="tip-i" data-tip="Language pair with highest combined error + slow rate (min 5 tests).">?</span></div><div class="hc-val ${worstValColor}" style="font-size:16px;">${worstShort}</div><div class="hc-sub">${worstIssues} issues · ${fp(worstRate)} rate</div></div>`:''}
   `;
 }
 
@@ -1188,7 +1236,7 @@ function getTcFiltered(){
 
 function renderTcTable(){
   const rows=getTcFiltered();
-  rows.sort((a,b)=>{let av=a[scTc],bv=b[scTc];if(av==null)av=sdTc===1?Infinity:-Infinity;if(bv==null)bv=sdTc===1?Infinity:-Infinity;if(typeof av==='string')return av.localeCompare(bv)*sdTc;return(av-bv)*sdTc});
+  rows.sort((a,b)=>{if(scTc==='_sortKey'){const so={error:0,slow:1,pass:2};return((so[a.status]??2)-(so[b.status]??2))*sdTc;}let av=a[scTc],bv=b[scTc];if(av==null)av=sdTc===1?Infinity:-Infinity;if(bv==null)bv=sdTc===1?Infinity:-Infinity;if(typeof av==='string')return av.localeCompare(bv)*sdTc;return(av-bv)*sdTc});
   document.getElementById('tc-count').textContent=`${rows.length} / ${allR.length} testcases`;
   const n=rows.length,fail=rows.filter(x=>x.hasError).length;
   const crT=rows.map(x=>x.contentReadyTime).filter(v=>v!=null),totT=rows.map(x=>x.totalTime).filter(v=>v!=null);
@@ -1336,6 +1384,18 @@ function detailHTML(x){
     </div>
   </div>`;
 }
+
+// ── Fix 7: jump nav scroll show/hide ──
+window.addEventListener('scroll',()=>{
+  const nav=document.getElementById('jump-nav');
+  if(nav)nav.style.display=window.scrollY>200?'flex':'none';
+},{passive:true});
+
+// ── Fix 7: jump nav scroll show/hide ──
+window.addEventListener('scroll',()=>{
+  const nav=document.getElementById('jump-nav');
+  if(nav)nav.style.display=window.scrollY>200?'flex':'none';
+},{passive:true});
 </script>
 </body>
 </html>
