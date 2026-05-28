@@ -327,6 +327,12 @@
       <span class="section-title">Failure breakdown</span>
       <span class="section-desc">What kinds of failures, where, and across which dimensions?</span>
     </div>
+    <div class="filter-bar" style="margin-bottom:.75rem;">
+      <select id="ff-pair"><option value="">All pairs</option></select>
+      <select id="ff-cefr"><option value="">All CEFR</option></select>
+      <select id="ff-errtype"><option value="">All issue types</option></select>
+      <span class="f-count" id="ff-count"></span>
+    </div>
     <div class="col-3">
       <!-- 4a error type donut -->
       <div class="card">
@@ -433,6 +439,13 @@
         <option value="slow">Slower than mean</option>
         <option value="2x">≥2× slower than mean</option>
       </select>
+      <select id="sf-tc-status">
+        <option value="">All TC statuses</option>
+        <option value="pass">TC passed</option>
+        <option value="error">TC errored</option>
+        <option value="slow">TC slow</option>
+      </select>
+      <select id="sf-tc-errtype"><option value="">All TC error types</option></select>
       <input type="text" id="sf-search" placeholder="Search testcase name…">
       <span class="f-count" id="seg-count"></span>
     </div>
@@ -448,6 +461,7 @@
           <th data-col2="deviation" data-tip="(time − global seg mean) ÷ mean. Signed %.">vs. mean <span class="si">↕</span></th>
           <th data-col2="tcTotal" data-tip="Parent testcase total E2E.">TC total <span class="si">↕</span></th>
           <th data-col2="segShare" data-tip="This seg's share of its testcase total time.">% of TC <span class="si">↕</span></th>
+          <th data-col2="tcErrType" data-tip="Parent testcase outcome — whether it passed, errored, or was flagged as slow.">TC status <span class="si">↕</span></th>
         </tr></thead>
         <tbody id="seg-tbody"></tbody>
       </table>
@@ -530,7 +544,7 @@ function loadResults(results,filename,metaLabel){
   markSlowProcessing(allR);
   const gm=avg(allR.flatMap(x=>x.segTimes));
   allSegs=[];
-  for(const tc of allR)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null}));
+  for(const tc of allR)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null,tcHasError:tc.hasError,tcIsSlow:tc.isSlow,tcErrType:tc.errType}));
   document.getElementById('upload-screen').style.display='none';
   document.getElementById('dashboard').style.display='flex';
   document.getElementById('tb-filename').textContent=filename||'snapshot';
@@ -1043,6 +1057,19 @@ function renderLatency(r){
 
 // ══ §4 FAILURES ══
 function renderFailures(r){
+  // apply failure-section-specific filters on top of the analysis filter
+  const ffPair=document.getElementById('ff-pair')?.value||'';
+  const ffCefr=document.getElementById('ff-cefr')?.value||'';
+  const ffErrType=document.getElementById('ff-errtype')?.value||'';
+  if(ffPair||ffCefr||ffErrType)r=r.filter(x=>{
+    if(ffPair&&x.pair!==ffPair)return false;
+    if(ffCefr&&x.cefr!==ffCefr)return false;
+    if(ffErrType&&x.errType!==ffErrType)return false;
+    return true;
+  });
+  const ffCountEl=document.getElementById('ff-count');
+  if(ffCountEl)ffCountEl.textContent=(ffPair||ffCefr||ffErrType)?`${r.length} testcases`:'';
+
   // donut — dynamic error types
   destroyC('donut');
   const errTcs=r.filter(x=>x.hasError);
@@ -1104,15 +1131,19 @@ function populateFilters(r){
   const cefrs=[...new Set(r.map(x=>x.cefr).filter(Boolean))].sort();
   const pairsHtml='<option value="">All pairs</option>'+pairs.map(p=>`<option value="${p}">${p}</option>`).join('');
   const cefrsHtml='<option value="">All CEFR</option>'+cefrs.map(c=>`<option value="${c}">${c}</option>`).join('');
-  ['f-pair','sf-pair2','af-pair'].forEach(id=>document.getElementById(id).innerHTML=pairsHtml);
-  ['f-cefr','sf-cefr2','af-cefr'].forEach(id=>document.getElementById(id).innerHTML=cefrsHtml);
-  // dynamic error type dropdown
+  ['f-pair','sf-pair2','af-pair','ff-pair'].forEach(id=>document.getElementById(id).innerHTML=pairsHtml);
+  ['f-cefr','sf-cefr2','af-cefr','ff-cefr'].forEach(id=>document.getElementById(id).innerHTML=cefrsHtml);
+  // dynamic error type dropdowns
   const errTypes=[...new Set(r.map(x=>x.errType).filter(Boolean))].sort();
-  document.getElementById('f-errtype').innerHTML='<option value="">All error types</option>'+errTypes.map(t=>`<option value="${t}">${t==='slow'?'Slow processing':t}</option>`).join('');
+  const errTypesHtml='<option value="">All error types</option>'+errTypes.map(t=>`<option value="${t}">${t==='slow'?'Slow processing':t}</option>`).join('');
+  document.getElementById('f-errtype').innerHTML=errTypesHtml;
+  document.getElementById('ff-errtype').innerHTML=errTypesHtml.replace('All error types','All issue types');
+  document.getElementById('sf-tc-errtype').innerHTML='<option value="">All TC error types</option>'+errTypes.map(t=>`<option value="${t}">${t==='slow'?'Slow processing':t}</option>`).join('');
 }
 function attachFilters(){
   ['f-status','f-pair','f-cefr','f-errtype','f-segs','f-search'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{expandedRow=null;renderTcTable()}));
-  ['sf-index','sf-pair2','sf-cefr2','sf-speed','sf-search'].forEach(id=>document.getElementById(id).addEventListener('input',()=>renderSegTable()));
+  ['sf-index','sf-pair2','sf-cefr2','sf-speed','sf-tc-status','sf-tc-errtype','sf-search'].forEach(id=>document.getElementById(id).addEventListener('input',()=>renderSegTable()));
+  ['ff-pair','ff-cefr','ff-errtype'].forEach(id=>document.getElementById(id).addEventListener('input',()=>renderFailures(getAnalysisFiltered())));
 }
 function attachSortTc(){
   document.querySelectorAll('thead th[data-col]').forEach(th=>{
@@ -1203,6 +1234,7 @@ function renderTcTable(){
 // ══ §6 SEGMENT TABLE ══
 function getSegFiltered(){
   const ix=document.getElementById('sf-index').value,pa=document.getElementById('sf-pair2').value,ce=document.getElementById('sf-cefr2').value,sp=document.getElementById('sf-speed').value,se=document.getElementById('sf-search').value.toLowerCase();
+  const stc=document.getElementById('sf-tc-status').value,etc=document.getElementById('sf-tc-errtype').value;
   return allSegs.filter(s=>{
     if(ix==='5+'&&s.idx<5)return false;
     if(ix&&ix!=='5+'&&s.idx!==+ix)return false;
@@ -1212,6 +1244,10 @@ function getSegFiltered(){
     if(sp==='fast'&&(s.deviation==null||s.deviation>=0))return false;
     if(sp==='slow'&&(s.deviation==null||s.deviation<=0))return false;
     if(sp==='2x'&&(s.deviation==null||s.deviation<1))return false;
+    if(stc==='pass'&&(s.tcHasError||s.tcIsSlow))return false;
+    if(stc==='error'&&!s.tcHasError)return false;
+    if(stc==='slow'&&!s.tcIsSlow)return false;
+    if(etc&&s.tcErrType!==etc)return false;
     return true;
   });
 }
@@ -1228,12 +1264,14 @@ function renderSegTable(){
   // rebuild istrip
   const oldS=document.getElementById('seg-istrip');
   const newS=document.createElement('div');newS.id='seg-istrip';newS.className='istrip';
+  const errSegs=rows.filter(s=>s.tcHasError).length,slowSegs=rows.filter(s=>s.tcIsSlow).length;
   newS.innerHTML=[
     {v:rows.length,l:'segments'},{v:s0.length,l:'seg 0 (cold)'},{v:s1p.length,l:'seg 1+ (warm)'},
     {v:fmt(med(times)),l:'median all'},{v:fmt(pct(times,90)),l:'p90 all'},
     {v:fmt(med(s0)),l:'median seg 0'},{v:fmt(med(s1p)),l:'median seg 1+'},
-    {v:fmt(avg(s0)),l:'avg seg 0'},{v:fmt(avg(s1p)),l:'avg seg 1+'},{v:ratio,l:'cold/warm ratio'}
-  ].map(s=>`<div class="istat"><span class="istat-val">${s.v}</span><span class="istat-lbl">${s.l}</span></div>`).join('');
+    {v:fmt(avg(s0)),l:'avg seg 0'},{v:fmt(avg(s1p)),l:'avg seg 1+'},{v:ratio,l:'cold/warm ratio'},
+    {v:errSegs,l:'from errored TC',c:errSegs?'var(--red)':'var(--text-3)'},{v:slowSegs,l:'from slow TC',c:slowSegs?'var(--blue)':'var(--text-3)'}
+  ].map(s=>`<div class="istat"><span class="istat-val"${s.c?` style="color:${s.c}"`:''}>${s.v}</span><span class="istat-lbl">${s.l}</span></div>`).join('');
   oldS.replaceWith(newS);
 
   const mxT=sMax(allSegs.map(s=>s.time).filter(v=>v!=null))||1;
@@ -1253,7 +1291,8 @@ function renderSegTable(){
       <td><div class="tbw"><div class="tmini" style="width:${bw}px;background:var(--blue);flex-shrink:0;"></div><span style="font-size:12px;font-variant-numeric:tabular-nums;">${fmt(s.time)}</span></div></td>
       <td>${dh}</td>
       <td style="font-size:12px;font-variant-numeric:tabular-nums;">${fmt(s.tcTotal)}</td>
-      <td style="font-weight:600;color:${sshC};font-size:12px;">${ssh}</td>`;
+      <td style="font-weight:600;color:${sshC};font-size:12px;">${ssh}</td>
+      <td>${s.tcHasError?`<span class="badge b-err" style="font-size:9px;">${s.tcErrType||'ERR'}</span>`:s.tcIsSlow?`<span class="badge b-slow" style="font-size:9px;">slow</span>`:`<span class="badge b-ok" style="font-size:9px;">ok</span>`}</td>`;
     tbody.appendChild(tr);
   });
 }
