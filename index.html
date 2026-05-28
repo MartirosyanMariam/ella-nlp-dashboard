@@ -301,17 +301,22 @@
     </div>
     <div class="hero-row" id="hero-row"></div>
 
-    <!-- Analysis filters — affect §2 §3 §4 -->
-    <div class="filter-bar" style="margin-top:1rem;margin-bottom:.25rem;padding:.5rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);">
-      <span style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;flex-shrink:0;">Analysis filters</span>
-      <select id="af-pair"><option value="">All pairs</option></select>
-      <select id="af-cefr"><option value="">All CEFR</option></select>
-      <span class="f-count" id="af-count"></span>
-    </div>
-
     <!-- ══════════════════════════════════
          §2  STABILITY  (pass/fail by phase)
     ══════════════════════════════════ -->
+    <div class="filter-bar" style="margin-top:1rem;margin-bottom:.25rem;">
+      <select id="stab-f-segs">
+        <option value="">All seg counts</option>
+        <option value="0">0 segs</option>
+        <option value="1">1 seg</option>
+        <option value="2">2 segs</option>
+        <option value="3">3 segs</option>
+        <option value="4">4 segs</option>
+        <option value="5+">5+ segs</option>
+      </select>
+      <select id="stab-f-errtype"><option value="">All error types</option></select>
+      <span class="f-count" id="stab-f-count"></span>
+    </div>
     <div id="stability-gt"></div>
 
     <!-- ══════════════════════════════════
@@ -633,28 +638,27 @@ function fp(v){if(v==null||isNaN(v))return'—';return(v*100).toFixed(1)+'%'}
 function lp(val,mx){if(!val||val<=0||!mx||mx<=0)return 2;return Math.max(2,Math.round(Math.log(Math.max(val,.5))/Math.log(Math.max(mx,.5))*100))}
 function rateColor(r){return r>0.15?'var(--red)':r>0.05?'var(--amber)':'var(--green)'}
 
-// ══ analysis filters (affects §2 §3 §4) ══
-function getAnalysisFiltered(){
-  const pa=document.getElementById('af-pair')?.value||'';
-  const ce=document.getElementById('af-cefr')?.value||'';
+// ══ stability filters (§2 only) ══
+function getStabFiltered(){
+  const sg=document.getElementById('stab-f-segs')?.value||'';
+  const et=document.getElementById('stab-f-errtype')?.value||'';
   return allR.filter(x=>{
-    if(pa&&x.pair!==pa)return false;
-    if(ce&&x.cefr!==ce)return false;
+    if(sg==='5+'&&x.numSegs<5)return false;
+    if(sg&&sg!=='5+'&&x.numSegs!==+sg)return false;
+    if(et&&x.errType!==et)return false;
     return true;
   });
 }
-function rerenderAnalysis(){
-  const r=getAnalysisFiltered();
-  const el=document.getElementById('af-count');
-  if(el)el.textContent=`${r.length} / ${allR.length} testcases`;
+function rerenderStability(){
+  const r=getStabFiltered();
+  const el=document.getElementById('stab-f-count');
+  if(el)el.textContent=(r.length<allR.length)?`${r.length} / ${allR.length} testcases`:'';
   renderStability(r);
-  renderLatency(r);
-  renderFailures(r);
 }
-function attachAnalysisFilters(){
-  ['af-pair','af-cefr'].forEach(id=>{
+function attachStabFilters(){
+  ['stab-f-segs','stab-f-errtype'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el)el.addEventListener('input',rerenderAnalysis);
+    if(el)el.addEventListener('input',rerenderStability);
   });
 }
 
@@ -662,11 +666,13 @@ function attachAnalysisFilters(){
 function render(r){
   renderHero(r);
   populateFilters(r);
-  rerenderAnalysis();
+  renderStability(r);
+  renderLatency(r);
+  renderFailures(r);
   renderTcTable();
   renderSegTable();
   attachFilters();
-  attachAnalysisFilters();
+  attachStabFilters();
   attachSortTc();
   attachSortSeg();
 }
@@ -1131,13 +1137,14 @@ function populateFilters(r){
   const cefrs=[...new Set(r.map(x=>x.cefr).filter(Boolean))].sort();
   const pairsHtml='<option value="">All pairs</option>'+pairs.map(p=>`<option value="${p}">${p}</option>`).join('');
   const cefrsHtml='<option value="">All CEFR</option>'+cefrs.map(c=>`<option value="${c}">${c}</option>`).join('');
-  ['f-pair','sf-pair2','af-pair','ff-pair'].forEach(id=>document.getElementById(id).innerHTML=pairsHtml);
-  ['f-cefr','sf-cefr2','af-cefr','ff-cefr'].forEach(id=>document.getElementById(id).innerHTML=cefrsHtml);
+  ['f-pair','sf-pair2','ff-pair'].forEach(id=>document.getElementById(id).innerHTML=pairsHtml);
+  ['f-cefr','sf-cefr2','ff-cefr'].forEach(id=>document.getElementById(id).innerHTML=cefrsHtml);
   // dynamic error type dropdowns
   const errTypes=[...new Set(r.map(x=>x.errType).filter(Boolean))].sort();
   const errTypesHtml='<option value="">All error types</option>'+errTypes.map(t=>`<option value="${t}">${t==='slow'?'Slow processing':t}</option>`).join('');
   document.getElementById('f-errtype').innerHTML=errTypesHtml;
   document.getElementById('ff-errtype').innerHTML=errTypesHtml.replace('All error types','All issue types');
+  document.getElementById('stab-f-errtype').innerHTML=errTypesHtml;
   document.getElementById('sf-tc-errtype').innerHTML='<option value="">All TC error types</option>'+errTypes.map(t=>`<option value="${t}">${t==='slow'?'Slow processing':t}</option>`).join('');
 }
 function attachFilters(){
