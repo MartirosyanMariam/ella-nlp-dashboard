@@ -182,6 +182,7 @@
   .b-504{background:var(--amber-bg);color:var(--amber)}
   .b-500{background:var(--red-bg);color:var(--red)}
   .b-cont{background:var(--blue-bg);color:var(--blue)}
+  .b-slow{background:var(--blue-bg);color:var(--blue)}
 
   /* mini bar for time column */
   .tbw{display:flex;align-items:center;gap:5px}
@@ -300,6 +301,14 @@
     </div>
     <div class="hero-row" id="hero-row"></div>
 
+    <!-- Analysis filters — affect §2 §3 §4 -->
+    <div class="filter-bar" style="margin-top:1rem;margin-bottom:.25rem;padding:.5rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);">
+      <span style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;flex-shrink:0;">Analysis filters</span>
+      <select id="af-pair"><option value="">All pairs</option></select>
+      <select id="af-cefr"><option value="">All CEFR</option></select>
+      <span class="f-count" id="af-count"></span>
+    </div>
+
     <!-- ══════════════════════════════════
          §2  STABILITY  (pass/fail by phase)
     ══════════════════════════════════ -->
@@ -308,12 +317,7 @@
     <!-- ══════════════════════════════════
          §3  LATENCY  (by phase)
     ══════════════════════════════════ -->
-    <div class="section-hd">
-      <span class="section-num">3</span>
-      <span class="section-title">Latency by pipeline phase</span>
-      <span class="section-desc">Wall-time statistics · "Content ready" = first moment user sees output (content step + seg 0)</span>
-    </div>
-    <div class="gt-wrap" id="latency-gt"></div>
+    <div id="latency-gt"></div>
 
     <!-- ══════════════════════════════════
          §4  FAILURE BREAKDOWN
@@ -326,7 +330,7 @@
     <div class="col-3">
       <!-- 4a error type donut -->
       <div class="card">
-        <div class="card-title">Error type <span class="tip-i" data-tip="504 = gateway timeout on assembly. 500 = model/infra server error. Other = anything else.">?</span></div>
+        <div class="card-title">Error / issue type <span class="tip-i" data-tip="Error types detected in this run. Slow = completed without error but ≥2.5× the run median E2E time.">?</span></div>
         <div style="display:flex;align-items:center;gap:1.25rem;">
           <div style="position:relative;width:100px;height:100px;flex-shrink:0;"><canvas id="donutChart"></canvas></div>
           <div id="donut-legend" style="display:flex;flex-direction:column;gap:7px;font-size:12px;"></div>
@@ -362,6 +366,7 @@
       <select id="f-status">
         <option value="">All statuses</option>
         <option value="pass">Pass only</option>
+        <option value="slow">Slow processing</option>
         <option value="error">Any error</option>
         <option value="content-err">Content step error</option>
         <option value="assembly-err">Assembly step error</option>
@@ -369,11 +374,7 @@
       </select>
       <select id="f-pair"><option value="">All pairs</option></select>
       <select id="f-cefr"><option value="">All CEFR</option></select>
-      <select id="f-errtype">
-        <option value="">All error types</option>
-        <option value="504">504 timeout</option>
-        <option value="500">500 server error</option>
-      </select>
+      <select id="f-errtype"><option value="">All error types</option></select>
       <select id="f-segs">
         <option value="">All seg counts</option>
         <option value="0">0 segs</option>
@@ -526,6 +527,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 
 function loadResults(results,filename,metaLabel){
   allR=results;
+  markSlowProcessing(allR);
   const gm=avg(allR.flatMap(x=>x.segTimes));
   allSegs=[];
   for(const tc of allR)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null}));
@@ -549,6 +551,7 @@ function parse(txt,fname){
     }else i++;
   }
   allR=res;
+  markSlowProcessing(allR);
   const gm=avg(res.flatMap(x=>x.segTimes));
   allSegs=[];
   for(const tc of res)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null}));
@@ -558,6 +561,31 @@ function parse(txt,fname){
   const mm=txt.match(/"llm_model"\s*:\s*"([^"]+)"/);
   document.getElementById('tb-meta').textContent=mm?`model: ${mm[1]}`:'';
   render(res);
+}
+
+function extractErrType(msgs){
+  const text=msgs.map(m=>String(m)).join(' ');
+  const codeM=text.match(/\b([45]\d\d)\b/);
+  if(codeM)return codeM[1];
+  if(/timeout|timed.?out|ETIMEDOUT/i.test(text))return'timeout';
+  if(/ECONNREFUSED/i.test(text))return'connection refused';
+  if(/ENOTFOUND/i.test(text))return'DNS error';
+  if(/rate.?limit/i.test(text))return'rate limit';
+  const s=String(msgs[0]||'').replace(/[^a-zA-Z0-9 _]/g,' ').trim().replace(/\s+/g,' ').slice(0,25);
+  return s||'unknown';
+}
+
+function markSlowProcessing(res){
+  const totals=res.map(x=>x.totalTime).filter(v=>v!=null);
+  const medTot=med(totals);
+  if(!medTot)return;
+  const threshold=Math.max(medTot*2.5,20);
+  for(const tc of res){
+    if(!tc.hasError&&tc.totalTime!=null&&tc.totalTime>threshold){
+      tc.isSlow=true;
+      tc.errType='slow';
+    }
+  }
 }
 
 function buildR(tc){
@@ -571,13 +599,13 @@ function buildR(tc){
   }
   const hasErr=aErr.length>0,hasCErr=cErr.length>0,hasAsErr=asErr.length>0;
   const msgs=aErr.map(e=>e.msg);
-  let eType=null;if(hasErr){if(msgs.some(m=>String(m).includes('504')))eType='504';else if(msgs.some(m=>String(m).includes('500')))eType='500';else eType='other'}
+  let eType=null;if(hasErr)eType=extractErrType(msgs);
   const sp=sc.split(','),tp=tC.split(',');
   const s0=segs[0]??null,s1p=segs.slice(1),s1pA=s1p.length?s1p.reduce((a,b)=>a+b,0)/s1p.length:null;
   const segTot=segs.reduce((a,b)=>a+b,0),segSh=(segTot>0&&tot)?segTot/tot:null;
   const crT=(cont!=null&&s0!=null)?cont+s0:null,crErr=hasCErr||(segs.length===0&&hasErr);
   let status='pass';if(hasCErr)status='content-err';else if(hasAsErr)status='assembly-err';else if(hasErr)status='error';
-  return{name:sn,srcCfg:sc,tgtCfg:tC,srcText:st,srcLang:sp[0]||'',tgtLang:tp[0]||'',cefr:sp[1]||'',pair:`${sp[0]||'?'}→${tp[0]||'?'}`,numSegs:segs.length,totalTime:tot,contentTime:cont,segTimes:segs,seg0Time:s0,seg1pTimes:s1p,seg1pAvg:s1pA,segTotalTime:segTot,segTimeShare:segSh,contentReadyTime:crT,contentReadyError:crErr,allErrors:aErr,contentErrors:cErr,assemblyErrors:asErr,hasError:hasErr,hasContentStepError:hasCErr,hasAssemblyError:hasAsErr,isZeroSeg:segs.length===0,errType:eType,status};
+  return{name:sn,srcCfg:sc,tgtCfg:tC,srcText:st,srcLang:sp[0]||'',tgtLang:tp[0]||'',cefr:sp[1]||'',pair:`${sp[0]||'?'}→${tp[0]||'?'}`,numSegs:segs.length,totalTime:tot,contentTime:cont,segTimes:segs,seg0Time:s0,seg1pTimes:s1p,seg1pAvg:s1pA,segTotalTime:segTot,segTimeShare:segSh,contentReadyTime:crT,contentReadyError:crErr,allErrors:aErr,contentErrors:cErr,assemblyErrors:asErr,hasError:hasErr,hasContentStepError:hasCErr,hasAssemblyError:hasAsErr,isZeroSeg:segs.length===0,errType:eType,isSlow:false,status};
 }
 
 // ══ math ══
@@ -591,16 +619,40 @@ function fp(v){if(v==null||isNaN(v))return'—';return(v*100).toFixed(1)+'%'}
 function lp(val,mx){if(!val||val<=0||!mx||mx<=0)return 2;return Math.max(2,Math.round(Math.log(Math.max(val,.5))/Math.log(Math.max(mx,.5))*100))}
 function rateColor(r){return r>0.15?'var(--red)':r>0.05?'var(--amber)':'var(--green)'}
 
-// ══ render master ══
-function render(r){
-  renderHero(r);
+// ══ analysis filters (affects §2 §3 §4) ══
+function getAnalysisFiltered(){
+  const pa=document.getElementById('af-pair')?.value||'';
+  const ce=document.getElementById('af-cefr')?.value||'';
+  return allR.filter(x=>{
+    if(pa&&x.pair!==pa)return false;
+    if(ce&&x.cefr!==ce)return false;
+    return true;
+  });
+}
+function rerenderAnalysis(){
+  const r=getAnalysisFiltered();
+  const el=document.getElementById('af-count');
+  if(el)el.textContent=`${r.length} / ${allR.length} testcases`;
   renderStability(r);
   renderLatency(r);
   renderFailures(r);
+}
+function attachAnalysisFilters(){
+  ['af-pair','af-cefr'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.addEventListener('input',rerenderAnalysis);
+  });
+}
+
+// ══ render master ══
+function render(r){
+  renderHero(r);
   populateFilters(r);
+  rerenderAnalysis();
   renderTcTable();
   renderSegTable();
   attachFilters();
+  attachAnalysisFilters();
   attachSortTc();
   attachSortSeg();
 }
@@ -612,12 +664,13 @@ function renderHero(r){
   const crTimes=r.map(x=>x.contentReadyTime).filter(v=>v!=null);
   const totTimes=r.map(x=>x.totalTime).filter(v=>v!=null);
   const c504=r.filter(x=>x.errType==='504').length,c500=r.filter(x=>x.errType==='500').length;
-  const errCls=errR>0.15?'c-red v-red':errR>0.05?'c-amber v-amber':'c-green v-green';
+  const cSlow=r.filter(x=>x.isSlow).length;
+  const subErr=`${c504} timeout · ${c500} server err${cSlow?' · '+cSlow+' slow':''}`;
   document.getElementById('hero-row').innerHTML=`
     <div class="hero-card c-neutral"><div class="hc-label">Total tests</div><div class="hc-val">${n}</div><div class="hc-sub">in this run</div></div>
     <div class="hero-card c-green"><div class="hc-label">Passed</div><div class="hc-val v-green">${pass}</div><div class="hc-sub">${fp(n?pass/n:0)} pass rate</div></div>
     <div class="hero-card ${errR>0.05?'c-red':'c-green'}"><div class="hc-label">Failed</div><div class="hc-val ${errR>0.05?'v-red':'v-green'}">${fail}</div><div class="hc-sub">${fp(errR)} error rate</div></div>
-    <div class="hero-card ${errR>0.15?'c-red':errR>0.05?'c-amber':'c-green'}"><div class="hc-label">Error rate</div><div class="hc-val ${errR>0.15?'v-red':errR>0.05?'v-amber':'v-green'}">${fp(errR)}</div><div class="hc-sub">${c504} timeout · ${c500} server err</div></div>
+    <div class="hero-card ${errR>0.15?'c-red':errR>0.05?'c-amber':'c-green'}"><div class="hc-label">Error rate</div><div class="hc-val ${errR>0.15?'v-red':errR>0.05?'v-amber':'v-green'}">${fp(errR)}</div><div class="hc-sub">${subErr}</div></div>
     <div class="hero-card c-blue"><div class="hc-label">Median content ready <span class="tip-i" data-tip="Median of content step + Seg 0 combined — the latency a user actually experiences before seeing first output.">?</span></div><div class="hc-val">${fmt(med(crTimes))}</div><div class="hc-sub">avg ${fmt(avg(crTimes))} · p90 ${fmt(pct(crTimes,90))}</div></div>
     <div class="hero-card c-neutral"><div class="hc-label">Median E2E</div><div class="hc-val">${fmt(med(totTimes))}</div><div class="hc-sub">avg ${fmt(avg(totTimes))} · p90 ${fmt(pct(totTimes,90))}</div></div>
   `;
@@ -833,61 +886,176 @@ function renderStability(r){
   </div>`;
 }
 
-// ══ §3 LATENCY ══
+// ══ §3 LATENCY (dark phase-section design) ══
+const latState={'content-ready':false,'segs1plus':false};
+function latToggle(group){
+  latState[group]=!latState[group];
+  const open=latState[group];
+  const chev=document.getElementById('lat-chev-'+group);
+  if(chev){chev.style.transform=open?'rotate(90deg)':'rotate(0deg)';chev.style.color=open?'#f0b429':'#55555f';}
+  document.querySelectorAll('.lat-'+group+'-child').forEach(row=>{row.style.display=open?'table-row':'none';});
+}
+
 function renderLatency(r){
+  latState['content-ready']=false;
+  latState['segs1plus']=false;
+
   const totT=r.map(x=>x.totalTime).filter(v=>v!=null);
   const contT=r.map(x=>x.contentTime).filter(v=>v!=null);
   const crT=r.map(x=>x.contentReadyTime).filter(v=>v!=null);
   const s0T=r.filter(x=>x.seg0Time!=null).map(x=>x.seg0Time);
   const s1pT=r.flatMap(x=>x.seg1pTimes);
   const ohT=r.filter(x=>x.totalTime!=null&&x.segTimes.length>0).map(x=>x.totalTime-x.segTotalTime).filter(v=>v>0);
+  const maxSegIdx=r.reduce((a,x)=>Math.max(a,x.segTimes.length),0);
 
-  function cells(times,unit){
-    const a=avg(times),m=med(times),p90=pct(times,90),mx=sMax(times);
-    const slowColor=(p90&&a&&p90>a*1.8)?'var(--red)':undefined;
-    return[
-      {v:String(times.length),s:unit||'with data'},
-      {v:fmt(m),s:'median'},
-      {v:fmt(a),s:'mean'},
-      {v:fmt(p90),s:'p90 — SLA indicator',color:slowColor},
-      {v:fmt(mx),s:'worst case'}
-    ];
+  function latNumCell(val,sub,colorCls,small){
+    const sz=small?` style="font-size:16px"`:'';
+    return`<td><span class="stab-num ${colorCls}"${sz}>${val}</span><div class="stab-sub">${sub}</div></td>`;
   }
-  const cols=[
-    {label:'n'},
-    {label:'Median (p50)',tip:'Most robust central estimate — not skewed by outliers.'},
-    {label:'Mean (avg)',tip:'Sensitive to outliers. Compare to median: large gap = long-tail problem.'},
-    {label:'p90',tip:'90% of cases completed within this. Key SLA signal — if much higher than median, you have a long tail.'},
-    {label:'Max',tip:'Worst single case. Use to bound the tail.'}
-  ];
-  const rows=[
-    {label:'Content step',sub:'request content op',accent:'blue',tip:"'request content' wall time per testcase.",cells:cells(contT,'testcases')},
-    {label:'Seg 0',sub:'first segment call',accent:'',tip:'First segment call — includes cold-start overhead. Compare to Seg 1+ to quantify cold-start penalty.',cells:cells(s0T,'testcases')},
-    {label:'Content ready ★',sub:'content step + seg 0',accent:'green',tip:'User-facing latency KPI — time from run start to first output visible to user. Target: minimize median and p90.',cells:cells(crT,'testcases')},
-    {label:'Segs 1+',sub:'repeat calls (pooled)',accent:'amber',tip:'All repeat segment invocations (idx ≥1). Compare avg to Seg 0 avg to quantify cold-start ratio.',cells:cells(s1pT,'invocations')},
-    {label:'Non-seg overhead',sub:'total minus all seg time',accent:'purple',tip:'Assembly + routing + framework time. = Total E2E − all segment time. High value = pipeline overhead problem, not a model speed problem.',cells:cells(ohT,'testcases')},
-    {label:'Total E2E',sub:'full pipeline wall time',accent:'',tip:'Full wall time from first operator call to last. Includes everything.',cells:cells(totT,'testcases')}
-  ];
-  document.getElementById('latency-gt').innerHTML=gridBlock(cols,rows,'195px');
+  function latStatsRow(times,unit){
+    const a=avg(times),m=med(times),p90v=pct(times,90),mx=sMax(times);
+    const p90Col=(p90v&&a&&p90v>a*1.8)?'sc-red':'sc-white';
+    return latNumCell(String(times.length),unit||'with data','sc-white')+
+      latNumCell(fmt(m),'median','sc-white')+
+      latNumCell(fmt(a),'mean','sc-white')+
+      latNumCell(fmt(p90v),'p90 — SLA indicator',p90Col)+
+      latNumCell(fmt(mx),'worst case','sc-muted');
+  }
+  function latStatsRowSm(times,unit){
+    const a=avg(times),m=med(times),p90v=pct(times,90),mx=sMax(times);
+    const p90Col=(p90v&&a&&p90v>a*1.8)?'sc-red':'sc-white';
+    return latNumCell(String(times.length),unit||'with data','sc-white',true)+
+      latNumCell(fmt(m),'median','sc-white',true)+
+      latNumCell(fmt(a),'mean','sc-white',true)+
+      latNumCell(fmt(p90v),'p90',p90Col,true)+
+      latNumCell(fmt(mx),'max','sc-muted',true);
+  }
 
-  // slowest 10 — moved inside Failures visuals section; render step-bars in failure section
-  renderSlowAndBars(r);
-}
+  const chevSvg=`<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const SHOW_LIMIT=11;
+  let seg1pRowsHtml='';
+  for(let N=1;N<maxSegIdx&&N<=SHOW_LIMIT;N++){
+    const segNTimes=r.map(x=>x.segTimes[N]).filter(v=>v!=null);
+    if(!segNTimes.length)continue;
+    seg1pRowsHtml+=`<tr class="phase-row stab-seg-child lat-segs1plus-child">
+      <td class="stab-row-label"><div class="stab-row-inner"><div>
+        <div class="stab-row-name">Seg ${N}</div>
+        <div class="stab-row-sub" style="color:#3a5070">segment index ${N}</div>
+      </div></div></td>
+      ${latStatsRowSm(segNTimes,'invocations')}
+    </tr>`;
+  }
+  if(maxSegIdx>SHOW_LIMIT+1){
+    const tailT=[];
+    for(let N=SHOW_LIMIT+1;N<maxSegIdx;N++)r.forEach(x=>{if(x.segTimes[N]!=null)tailT.push(x.segTimes[N]);});
+    if(tailT.length)seg1pRowsHtml+=`<tr class="phase-row stab-seg-child stab-seg-tail lat-segs1plus-child">
+      <td class="stab-row-label"><div class="stab-row-inner"><div>
+        <div class="stab-row-name">Seg ${SHOW_LIMIT+1}–${maxSegIdx-1} <span class="stab-chip">tail</span></div>
+        <div class="stab-row-sub" style="color:#2a3a4a">pooled</div>
+      </div></div></td>
+      ${latStatsRowSm(tailT,'invocations')}
+    </tr>`;
+  }
 
-function renderSlowAndBars(r){
-  // This is now rendered as part of the Failures section layout; handled in renderFailures
+  document.getElementById('latency-gt').innerHTML=`
+  <div class="phase-section">
+    <div class="phase-header">
+      <div class="phase-badge">3</div>
+      <div class="phase-title">Latency by Pipeline Phase</div>
+      <div class="phase-subtitle">Wall-time statistics — "Content ready" = first moment user sees output</div>
+    </div>
+    <table class="phase-table">
+      <thead><tr>
+        <th style="width:220px"></th>
+        <th style="width:120px">n</th>
+        <th style="width:160px">Median (p50)</th>
+        <th style="width:160px">Mean (avg)</th>
+        <th style="width:160px">p90</th>
+        <th>Max</th>
+      </tr></thead>
+      <tbody>
+
+        <tr class="phase-row stab-summary">
+          <td class="stab-row-label"><div class="stab-row-inner"><div>
+            <div class="stab-row-name">Total E2E</div>
+            <div class="stab-row-sub">full pipeline wall time</div>
+          </div></div></td>
+          ${latStatsRow(totT,'testcases')}
+        </tr>
+
+        <tr class="phase-row stab-summary" style="opacity:.75">
+          <td class="stab-row-label"><div class="stab-row-inner"><div>
+            <div class="stab-row-name">Non-seg overhead</div>
+            <div class="stab-row-sub">total − all segment time</div>
+          </div></div></td>
+          ${latStatsRow(ohT,'testcases')}
+        </tr>
+
+        <tr class="phase-row stab-phase-sep"><td colspan="6"></td></tr>
+
+        <tr class="phase-row stab-group-parent" onclick="latToggle('content-ready')">
+          <td class="stab-row-label"><div class="stab-row-inner">
+            <div class="stab-chevron" id="lat-chev-content-ready">${chevSvg}</div>
+            <div>
+              <div class="stab-row-name">Content Ready ★ <span class="stab-chip">phase</span></div>
+              <div class="stab-row-sub">content step + seg 0 — user-facing KPI</div>
+            </div>
+          </div></td>
+          ${latStatsRow(crT,'testcases')}
+        </tr>
+
+        <tr class="phase-row stab-child-l1 lat-content-ready-child" style="display:none">
+          <td class="stab-row-label"><div class="stab-row-inner"><div>
+            <div class="stab-row-name">Content Step</div>
+            <div class="stab-row-sub">request content op</div>
+          </div></div></td>
+          ${latStatsRowSm(contT,'testcases')}
+        </tr>
+
+        <tr class="phase-row stab-child-l1 lat-content-ready-child" style="display:none">
+          <td class="stab-row-label"><div class="stab-row-inner"><div>
+            <div class="stab-row-name">Seg 0</div>
+            <div class="stab-row-sub">first segment — cold-start included</div>
+          </div></div></td>
+          ${latStatsRowSm(s0T,'testcases')}
+        </tr>
+
+        <tr class="phase-row stab-phase-sep"><td colspan="6"></td></tr>
+
+        <tr class="phase-row stab-segs-parent" onclick="latToggle('segs1plus')">
+          <td class="stab-row-label"><div class="stab-row-inner">
+            <div class="stab-chevron" id="lat-chev-segs1plus">${chevSvg}</div>
+            <div>
+              <div class="stab-row-name">Segs 1+ <span class="stab-chip stab-chip-blue">expandable</span></div>
+              <div class="stab-row-sub">all repeat segment calls — pooled</div>
+            </div>
+          </div></td>
+          ${latStatsRow(s1pT,'invocations')}
+        </tr>
+
+        ${seg1pRowsHtml}
+
+      </tbody>
+    </table>
+    <div class="stab-note">★ Content Ready = first output visible to user &nbsp;·&nbsp; p90 in red if >1.8× mean (long tail) &nbsp;·&nbsp; Non-seg overhead = assembly + routing + framework time</div>
+  </div>`;
 }
 
 // ══ §4 FAILURES ══
 function renderFailures(r){
-  // donut
+  // donut — dynamic error types
   destroyC('donut');
   const errTcs=r.filter(x=>x.hasError);
-  const c504=errTcs.filter(x=>x.errType==='504').length,c500=errTcs.filter(x=>x.errType==='500').length,cOth=errTcs.filter(x=>x.errType==='other').length;
-  const rawC=[c504,c500,cOth],rawL=['504 Timeout','500 Server Err','Other'],rawCl=['#EF9F27','#E24B4A','#888780'];
+  const typeMap={};
+  for(const tc of errTcs){const t=tc.errType||'unknown';typeMap[t]=(typeMap[t]||0)+1;}
+  const slowTcs=r.filter(x=>x.isSlow);
+  if(slowTcs.length)typeMap['slow']=(typeMap['slow']||0)+slowTcs.length;
+  const knownColors={'504':'#EF9F27','500':'#E24B4A','timeout':'#EF9F27','slow':'#185FA5','connection refused':'#E24B4A','rate limit':'#8B5CF6'};
+  const autoPalette=['#8B5CF6','#10B981','#6366F1','#EC4899','#F59E0B','#888780'];let aPalIdx=0;
+  const rawL=Object.keys(typeMap),rawC=rawL.map(l=>typeMap[l]),rawCl=rawL.map(l=>knownColors[l]||(autoPalette[aPalIdx++%autoPalette.length]));
   const dD=rawC.filter(v=>v>0),dL=rawL.filter((_,i)=>rawC[i]>0),dCl=rawCl.filter((_,i)=>rawC[i]>0);
   if(dD.length)charts['donut']=new Chart(document.getElementById('donutChart'),{type:'doughnut',data:{labels:dL,datasets:[{data:dD,backgroundColor:dCl,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false}}}});
-  document.getElementById('donut-legend').innerHTML=dD.length?dL.map((l,i)=>`<div style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:2px;background:${dCl[i]};flex-shrink:0;display:inline-block;"></span><span style="font-size:12px;">${l} — <strong>${dD[i]}</strong></span></div>`).join(''):'<div style="color:var(--green);font-size:12px;">✓ No errors</div>';
+  document.getElementById('donut-legend').innerHTML=dD.length?dL.map((l,i)=>`<div style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:2px;background:${dCl[i]};flex-shrink:0;display:inline-block;"></span><span style="font-size:12px;">${l==='slow'?'Slow processing':l} — <strong>${dD[i]}</strong></span></div>`).join(''):'<div style="color:var(--green);font-size:12px;">✓ No errors</div>';
 
   // CEFR stacked
   destroyC('cefr');
@@ -903,12 +1071,14 @@ function renderFailures(r){
   const aErrN=r.filter(x=>x.hasAssemblyError).length;
   const passingSegs=r.filter(x=>!x.hasError&&x.numSegs>0);
   const avgSegs=passingSegs.length?(passingSegs.reduce((a,x)=>a+x.numSegs,0)/passingSegs.length).toFixed(1):'—';
+  const slowN=r.filter(x=>x.isSlow).length;
   const patterns=[
     {label:'Content step errors',val:cErrN,pct:total?cErrN/total:0,color:'var(--blue)',tip:'Errors on request content — blocks all segment generation.'},
     {label:'Assembly errors',val:aErrN,pct:total?aErrN/total:0,color:'var(--red)',tip:'Errors on the final assembly (request) operator.'},
     {label:'Zero-segment tests',val:zeroSeg,pct:total?zeroSeg/total:0,color:'var(--amber)',tip:'Testcases that produced zero segment calls (includes content errors + silent failures).'},
     {label:'Silent zero-seg',val:silent,pct:total?silent/total:0,color:'var(--amber)',tip:'Zero segments BUT content step reported no error — silent failure, harder to detect.'},
     {label:'Cascade failures',val:cascade,pct:cErrN?cascade/cErrN:0,color:'var(--purple)',tip:'Testcases with BOTH content and assembly errors. % = share of content-error tests. High = same root cause cascading.'},
+    {label:'Slow processing',val:slowN,pct:total?slowN/total:0,color:'var(--blue)',tip:'Completed without error but total E2E exceeded 2.5× the run median. Suggests resource contention or cold model warm-up.'},
   ];
   const maxPct=Math.max(...patterns.map(p=>p.pct),0.01);
   document.getElementById('failure-patterns').innerHTML=patterns.map(p=>`
@@ -932,8 +1102,13 @@ function destroyC(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
 function populateFilters(r){
   const pairs=[...new Set(r.map(x=>x.pair))].sort();
   const cefrs=[...new Set(r.map(x=>x.cefr).filter(Boolean))].sort();
-  ['f-pair','sf-pair2'].forEach(id=>document.getElementById(id).innerHTML='<option value="">All pairs</option>'+pairs.map(p=>`<option value="${p}">${p}</option>`).join(''));
-  ['f-cefr','sf-cefr2'].forEach(id=>document.getElementById(id).innerHTML='<option value="">All CEFR</option>'+cefrs.map(c=>`<option value="${c}">${c}</option>`).join(''));
+  const pairsHtml='<option value="">All pairs</option>'+pairs.map(p=>`<option value="${p}">${p}</option>`).join('');
+  const cefrsHtml='<option value="">All CEFR</option>'+cefrs.map(c=>`<option value="${c}">${c}</option>`).join('');
+  ['f-pair','sf-pair2','af-pair'].forEach(id=>document.getElementById(id).innerHTML=pairsHtml);
+  ['f-cefr','sf-cefr2','af-cefr'].forEach(id=>document.getElementById(id).innerHTML=cefrsHtml);
+  // dynamic error type dropdown
+  const errTypes=[...new Set(r.map(x=>x.errType).filter(Boolean))].sort();
+  document.getElementById('f-errtype').innerHTML='<option value="">All error types</option>'+errTypes.map(t=>`<option value="${t}">${t==='slow'?'Slow processing':t}</option>`).join('');
 }
 function attachFilters(){
   ['f-status','f-pair','f-cefr','f-errtype','f-segs','f-search'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{expandedRow=null;renderTcTable()}));
@@ -957,7 +1132,8 @@ function istrip(stats){return`<div class="istrip">`+stats.map(s=>`<div class="is
 function getTcFiltered(){
   const st=document.getElementById('f-status').value,pa=document.getElementById('f-pair').value,ce=document.getElementById('f-cefr').value,et=document.getElementById('f-errtype').value,sg=document.getElementById('f-segs').value,se=document.getElementById('f-search').value.toLowerCase();
   return allR.filter(x=>{
-    if(st==='pass'&&x.hasError)return false;
+    if(st==='pass'&&(x.hasError||x.isSlow))return false;
+    if(st==='slow'&&!x.isSlow)return false;
     if(st==='error'&&!x.hasError)return false;
     if(st==='content-err'&&!x.hasContentStepError)return false;
     if(st==='assembly-err'&&!x.hasAssemblyError)return false;
@@ -1000,9 +1176,9 @@ function renderTcTable(){
     const bc=x.hasError?'#E24B4A':'#639922';
     let sb;
     if(x.hasContentStepError)sb=`<span class="badge b-cont">content err</span>`;
-    else if(x.hasAssemblyError&&x.errType==='504')sb=`<span class="badge b-504">504</span>`;
-    else if(x.hasAssemblyError&&x.errType==='500')sb=`<span class="badge b-500">500</span>`;
+    else if(x.hasAssemblyError){const et=x.errType||'ERR';sb=`<span class="badge ${et==='504'?'b-504':et==='500'?'b-500':'b-err'}">${et}</span>`;}
     else if(x.hasError)sb=`<span class="badge b-err">${x.errType||'ERR'}</span>`;
+    else if(x.isSlow)sb=`<span class="badge b-slow">slow</span>`;
     else sb=`<span class="badge b-ok">pass</span>`;
     const ssh=x.segTimeShare!=null?fp(x.segTimeShare):'—';
     const sshC=x.segTimeShare!=null?(x.segTimeShare>.75?'var(--amber)':x.segTimeShare<.25?'var(--blue)':'var(--text-2)'):'var(--text-3)';
