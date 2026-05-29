@@ -511,7 +511,7 @@ function shareRun(){
       meta:document.getElementById('tb-meta').textContent,
       results:allR
     };
-    // Escape </script> sequences in JSON so they can't prematurely close the tag
+    // Escape end-of-script sequences in JSON so they can't prematurely close the tag
     const safeJson=JSON.stringify(snapshot).replace(/<\/script/gi,'<\\/script');
     // Inject snapshot data before </head>; replace any prior snapshot if re-exporting
     const snapshotScript=`<script>window.__SNAPSHOT__=${safeJson};<\/script>`;
