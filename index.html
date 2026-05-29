@@ -925,7 +925,7 @@ function renderStability(r){
 
         <tr class="phase-row stab-phase-sep"><td colspan="5"></td></tr>
 
-        <tr${clickableRow('phase-row stab-segs-parent',s1pFail>0,s1pBreakdown)} onclick="${s1pFail>0?'if(event.target.closest('tr')===this&&!event.defaultPrevented)':''}stabToggle('segs1plus');${s1pFail>0?'if(event.shiftKey||event.altKey)stabErrToggle(this)':''}">
+        <tr class="phase-row stab-segs-parent" onclick="stabToggle('segs1plus')">
           <td class="stab-row-label"><div class="stab-row-inner">
             <div class="stab-chevron" id="stab-chev-segs1plus">${chevSvg}</div>
             <div><div class="stab-row-name">Segs 1+ <span class="stab-chip stab-chip-blue">expandable</span></div>
