@@ -511,19 +511,28 @@ function shareRun(){
       meta:document.getElementById('tb-meta').textContent,
       results:allR
     };
-    // Inject snapshot into a copy of this page's HTML
-    const snapshotScript=`<script>window.__SNAPSHOT__=${JSON.stringify(snapshot)};<\/script>`;
-    const html=document.documentElement.outerHTML.replace(
-      /(<script[^>]*>window\.__SNAPSHOT__[\s\S]*?<\/script>\s*)?(<\/head>)/,
+    // Escape </script> sequences in JSON so they can't prematurely close the tag
+    const safeJson=JSON.stringify(snapshot).replace(/<\/script/gi,'<\\/script');
+    // Inject snapshot data before </head>; replace any prior snapshot if re-exporting
+    const snapshotScript=`<script>window.__SNAPSHOT__=${safeJson};<\/script>`;
+    // outerHTML omits <!DOCTYPE html> — prepend it so the file renders in standards mode
+    const rawHtml=document.documentElement.outerHTML;
+    const injected=rawHtml.replace(
+      /(<script[^>]*>window\.__SNAPSHOT__[\s\S]*?<\/script>\s*)?(<\/head>)/i,
       snapshotScript+'$2'
     );
-    const blob=new Blob([html],{type:'text/html'});
+    const html='<!DOCTYPE html>\n'+injected;
+    const blob=new Blob([html],{type:'text/html;charset=utf-8'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
+    a.style.display='none';
+    document.body.appendChild(a);
     const fname=(snapshot.filename||'results').replace(/\.[^.]+$/,'');
-    a.href=url;a.download=`ella-nlp-${fname}-snapshot.html`;
+    a.href=url;
+    a.download=`ella-nlp-${fname}-snapshot.html`;
     a.click();
-    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
     btn.textContent='✓ Downloaded';
     setTimeout(()=>{btn.textContent='⬇ Export snapshot';btn.disabled=false},2000);
   }catch(e){
