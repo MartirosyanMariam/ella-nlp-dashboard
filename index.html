@@ -624,7 +624,9 @@ function extractErrType(msgs){
 }
 
 function markSlowProcessing(res){
-  const totals=res.map(x=>x.totalTime).filter(v=>v!=null);
+  // Use only successful (non-errored) TCs as baseline — errored TCs often abort
+  // early and would pull the median down, making the threshold artificially low.
+  const totals=res.filter(x=>!x.hasError).map(x=>x.totalTime).filter(v=>v!=null);
   const medTot=med(totals);
   if(!medTot)return;
   const threshold=Math.max(medTot*2.5,20);
@@ -801,13 +803,14 @@ function renderStability(r){
   const fail=r.filter(x=>x.hasError).length,pass=n-fail;
   const cFail=r.filter(x=>x.hasContentStepError).length,cPass=n-cFail;
   const seg0N=n-cFail;
-  const seg0Fail=r.filter(x=>x.hasError&&x.seg0Time==null&&!x.hasContentStepError).length;
+  const seg0Fail=r.filter(x=>x.hasError&&!x.isSlow&&x.seg0Time==null&&!x.hasContentStepError).length;
   const seg0Pass=seg0N-seg0Fail;
   const crPass=r.filter(x=>x.contentReadyTime!=null).length;
   const crFail=n-crPass;
-  const s1pPass=r.reduce((a,x)=>a+x.seg1pTimes.length,0);
-  const s1pFail=r.filter(x=>x.hasError&&x.seg0Time!=null).length;
-  const s1pN=s1pPass+s1pFail;
+  // s1pFail = TCs with a hard error that reached seg 0 (slow excluded — they completed)
+  const s1pFail=r.filter(x=>x.hasError&&!x.isSlow&&x.seg0Time!=null).length;
+  // s1pPassed = pool - hard failures (includes both clean passes and slow TCs)
+  const s1pPassed=crPass-s1pFail;
   const maxSegIdx=r.reduce((a,x)=>Math.max(a,x.segTimes.length),0);
 
   function errBreakdown(tcs){
@@ -817,8 +820,8 @@ function renderStability(r){
   }
   const allErrBreakdown=errBreakdown(r.filter(x=>x.hasError));
   const cStepBreakdown=errBreakdown(r.filter(x=>x.hasContentStepError));
-  const seg0Breakdown=errBreakdown(r.filter(x=>x.hasError&&x.seg0Time==null&&!x.hasContentStepError));
-  const s1pBreakdown=errBreakdown(r.filter(x=>x.hasError&&x.seg0Time!=null));
+  const seg0Breakdown=errBreakdown(r.filter(x=>x.hasError&&!x.isSlow&&x.seg0Time==null&&!x.hasContentStepError));
+  const s1pBreakdown=errBreakdown(r.filter(x=>x.hasError&&!x.isSlow&&x.seg0Time!=null));
 
   function rateClass(rate){
     if(rate<=0)return'sr-0';if(rate<=0.05)return'sr-lo';if(rate<=0.15)return'sr-md';return'sr-hi';
@@ -837,9 +840,10 @@ function renderStability(r){
   const segRowData=[];
   for(let N=1;N<=maxSegIdx;N++){
     const p=r.filter(x=>x.segTimes.length>N).length;
-    const f=r.filter(x=>x.hasError&&x.segTimes.length===N&&!x.hasContentStepError).length;
+    // exclude slow TCs — they completed all segments and are not phase failures
+    const f=r.filter(x=>x.hasError&&!x.isSlow&&x.segTimes.length===N&&!x.hasContentStepError).length;
     const t=p+f;if(t===0)continue;
-    const bd=errBreakdown(r.filter(x=>x.hasError&&x.segTimes.length===N&&!x.hasContentStepError));
+    const bd=errBreakdown(r.filter(x=>x.hasError&&!x.isSlow&&x.segTimes.length===N&&!x.hasContentStepError));
     segRowData.push({N,p,f,t,bd});
   }
   const SHOW_LIMIT=11;
@@ -855,7 +859,7 @@ function renderStability(r){
           <div class="stab-row-name">Seg ${s.N}</div>
           <div class="stab-row-sub" style="color:#3a5070">testcases with ${s.N+1}+ segs${hasF?' · click for error breakdown':''}</div>
         </div></div></td>
-        ${numCell(s.t,'invocations','sc-white',true)}${numCell(s.p,fp(s.t?s.p/s.t:0)+' pass rate','sc-green',true)}${numCell(s.f,s.f?fp(s.f/s.t)+' of total':'—',s.f?'sc-red':'sc-muted',true)}${numCell(fp(rate),'error rate',rateClass(rate),true)}
+        ${numCell(s.t,'testcases','sc-white',true)}${numCell(s.p,fp(s.t?s.p/s.t:0)+' continued','sc-green',true)}${numCell(s.f,s.f?fp(s.f/s.t)+' of pool':'—',s.f?'sc-red':'sc-muted',true)}${numCell(fp(rate),'error rate',rateClass(rate),true)}
       </tr>`;
     } else { tailData.push(s); }
   }
@@ -869,11 +873,11 @@ function renderStability(r){
         <div class="stab-row-name">${label} <span class="stab-chip">tail</span></div>
         <div class="stab-row-sub" style="color:#2a3a4a">pooled · ${tF} edge failure${tF!==1?'s':''}</div>
       </div></div></td>
-      ${numCell(tT,'invocations','sc-white',true)}${numCell(tP,tT?fp(tP/tT)+' pass rate':'—','sc-green',true)}${numCell(tF,tF?fp(tF/tT)+' of total':'—',tF?'sc-red':'sc-muted',true)}${numCell(fp(tRate),'error rate',rateClass(tRate),true)}
+      ${numCell(tT,'testcases','sc-white',true)}${numCell(tP,tT?fp(tP/tT)+' continued':'—','sc-green',true)}${numCell(tF,tF?fp(tF/tT)+' of pool':'—',tF?'sc-red':'sc-muted',true)}${numCell(fp(tRate),'error rate',rateClass(tRate),true)}
     </tr>`;
   }
 
-  const noteText=`Slow processing is counted as a failure · Seg 0: ${seg0Fail} failed · ${crPass} passed → enter Segs 1+ pool &nbsp;·&nbsp; Segs 1+: ${pass} fully completed / ${s1pFail} failed at some segment &nbsp;·&nbsp; Click any row with failures to see error type breakdown`;
+  const noteText=`Slow TCs counted as failures (overall) but pass Content Ready (they completed). Segs 1+ pool (${crPass}): ${s1pPassed} completed incl. slow · ${s1pFail} hard errors &nbsp;·&nbsp; Click any row with failures to see error type breakdown`;
   const chevSvg=`<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
   document.getElementById('stability-gt').innerHTML=`
@@ -934,8 +938,8 @@ function renderStability(r){
             <div><div class="stab-row-name">Segs 1+ <span class="stab-chip stab-chip-blue">expandable</span></div>
             <div class="stab-row-sub">testcases that reached segment 1+</div></div>
           </div></td>
-          <td><span class="stab-num sc-white">${crPass}</span><div class="stab-sub">testcases in pool</div></td>
-          ${numCell(pass,'fully completed','sc-green')}${numCell(s1pFail,s1pFail?fp(s1pFail/crPass)+' of pool':'—',s1pFail?'sc-red':'sc-muted')}${numCell(fp(crPass?s1pFail/crPass:0),'error rate',rateClass(crPass?s1pFail/crPass:0))}
+          <td><span class="stab-num sc-white">${crPass}</span><div class="stab-sub">reached content ready</div></td>
+          ${numCell(s1pPassed,fp(crPass?s1pPassed/crPass:0)+' completed','sc-green')}${numCell(s1pFail,s1pFail?fp(s1pFail/crPass)+' hard errors':'—',s1pFail?'sc-red':'sc-muted')}${numCell(fp(crPass?s1pFail/crPass:0),'hard error rate',rateClass(crPass?s1pFail/crPass:0))}
         </tr>
 
         ${segRowsHtml}
@@ -1199,8 +1203,8 @@ function renderFailures(r){
     {label:'Assembly errors',val:aErrN,pct:total?aErrN/total:0,color:'var(--red)',tip:'Errors on the final assembly (request) operator.',key:'assembly'},
     {label:'Zero-segment tests',val:zeroSeg,pct:total?zeroSeg/total:0,color:'var(--amber)',tip:'Testcases that produced zero segment calls (includes content errors + silent failures).',key:'zero'},
     {label:'Silent zero-seg',val:silent,pct:total?silent/total:0,color:'var(--amber)',tip:'Zero segments BUT content step reported no error — silent failure, harder to detect.',key:'silent'},
-    {label:'Cascade failures',val:cascade,pct:cErrN?cascade/cErrN:0,color:'var(--purple)',tip:'Testcases with BOTH content and assembly errors.',key:'cascade'},
-    {label:'Slow processing',val:slowN,pct:total?slowN/total:0,color:'var(--blue)',tip:'Completed without error but total E2E exceeded 2.5× the run median.',key:'slow'},
+    {label:'Cascade failures',val:cascade,pct:total?cascade/total:0,color:'var(--purple)',tip:'Testcases with BOTH content and assembly errors. % is of total run.',key:'cascade'},
+    {label:'Slow processing',val:slowN,pct:total?slowN/total:0,color:'var(--blue)',tip:'Total E2E exceeded 2.5× the run median (baseline: successful TCs only). Counted as a failure.',key:'slow'},
   ];
   const maxPct=Math.max(...patterns.map(p=>p.pct),0.01);
   document.getElementById('failure-patterns').innerHTML=patterns.map(p=>`
@@ -1268,7 +1272,7 @@ function getTcFiltered(){
   const allTotT=allR.map(x=>x.totalTime).filter(v=>v!=null);
   const medE2E=med(allTotT),p90E2E=pct(allTotT,90);
   return allR.filter(x=>{
-    if(st==='pass'&&(x.hasError||x.isSlow))return false;
+    if(st==='pass'&&x.hasError)return false; // slow has hasError=true, no need for ||isSlow
     if(st==='slow'&&!x.isSlow)return false;
     if(st==='error'&&!x.hasError)return false;
     if(st==='content-err'&&!x.hasContentStepError)return false;
