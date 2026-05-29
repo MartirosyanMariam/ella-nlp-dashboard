@@ -571,7 +571,7 @@ function loadResults(results,filename,metaLabel){
   markSlowProcessing(allR);
   const gm=avg(allR.flatMap(x=>x.segTimes));
   allSegs=[];
-  for(const tc of allR)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null,tcHasError:tc.hasError,tcIsSlow:tc.isSlow,tcErrType:tc.errType,tcStatus:tc.hasError?'error':tc.isSlow?'slow':'pass'}));
+  for(const tc of allR)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null,tcHasError:tc.hasError,tcIsSlow:tc.isSlow,tcErrType:tc.errType,tcStatus:tc.isSlow?'slow':tc.hasError?'error':'pass'}));
   document.getElementById('upload-screen').style.display='none';
   document.getElementById('dashboard').style.display='flex';
   document.getElementById('tb-filename').textContent=filename||'snapshot';
@@ -603,7 +603,7 @@ function parse(txt,fname){
   markSlowProcessing(allR);
   const gm=avg(res.flatMap(x=>x.segTimes));
   allSegs=[];
-  for(const tc of res)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null,tcHasError:tc.hasError,tcIsSlow:tc.isSlow,tcErrType:tc.errType,tcStatus:tc.hasError?'error':tc.isSlow?'slow':'pass'}));
+  for(const tc of res)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null,tcHasError:tc.hasError,tcIsSlow:tc.isSlow,tcErrType:tc.errType,tcStatus:tc.isSlow?'slow':tc.hasError?'error':'pass'}));
   document.getElementById('upload-screen').style.display='none';
   document.getElementById('dashboard').style.display='flex';
   document.getElementById('tb-filename').textContent=fname;
@@ -631,7 +631,9 @@ function markSlowProcessing(res){
   for(const tc of res){
     if(!tc.hasError&&tc.totalTime!=null&&tc.totalTime>threshold){
       tc.isSlow=true;
-      tc.status='slow'; // slow is a state, not an error type
+      tc.status='slow';
+      tc.hasError=true;   // slow is treated as an error
+      tc.errType='slow';  // error type label
     }
   }
 }
@@ -710,18 +712,19 @@ function render(r){
 function renderHero(r){
   const n=r.length, fail=r.filter(x=>x.hasError).length, pass=n-fail;
   const cSlow=r.filter(x=>x.isSlow).length;
+  const cErr=fail-cSlow; // hard errors (non-slow)
   const errR=n?fail/n:0;
   const crTimes=r.map(x=>x.contentReadyTime).filter(v=>v!=null);
   const s0Times=r.filter(x=>x.seg0Time!=null).map(x=>x.seg0Time);
   const s1pTimes=r.flatMap(x=>x.seg1pTimes);
   const totTimes=r.map(x=>x.totalTime).filter(v=>v!=null);
 
+  const failSub=cSlow&&cErr?`${cErr} errors · ${cSlow} slow`:cSlow?`${cSlow} slow (≥2.5× median)`:cErr?`${cErr} errors`:'none';
   document.getElementById('hero-row').innerHTML=`
     <div class="hero-card c-neutral"><div class="hc-label">Total tests</div><div class="hc-val">${n}</div><div class="hc-sub">in this run</div></div>
-    <div class="hero-card c-green"><div class="hc-label">Passed</div><div class="hc-val v-green">${pass}</div><div class="hc-sub">${fp(n?pass/n:0)} pass rate</div></div>
-    <div class="hero-card ${errR>0.05?'c-red':'c-green'}"><div class="hc-label">Failed</div><div class="hc-val ${errR>0.05?'v-red':'v-green'}">${fail}</div><div class="hc-sub">${fp(errR)} failure rate</div></div>
-    ${cSlow?`<div class="hero-card c-amber"><div class="hc-label">Slow processing</div><div class="hc-val v-amber">${cSlow}</div><div class="hc-sub">≥2.5× run median E2E</div></div>`:''}
-    <div class="hero-card ${errR>0.15?'c-red':errR>0.05?'c-amber':'c-green'}"><div class="hc-label">Error rate</div><div class="hc-val ${errR>0.15?'v-red':errR>0.05?'v-amber':'v-green'}">${fp(errR)}</div><div class="hc-sub">${fail} errored · ${n-fail-cSlow} clean pass</div></div>
+    <div class="hero-card c-green"><div class="hc-label">Passed</div><div class="hc-val v-green">${pass}</div><div class="hc-sub">${fp(n?pass/n:0)} pass rate · clean only</div></div>
+    <div class="hero-card ${errR>0.05?'c-red':'c-green'}"><div class="hc-label">Failed</div><div class="hc-val ${errR>0.05?'v-red':'v-green'}">${fail}</div><div class="hc-sub">${failSub}</div></div>
+    <div class="hero-card ${errR>0.15?'c-red':errR>0.05?'c-amber':'c-green'}"><div class="hc-label">Error rate</div><div class="hc-val ${errR>0.15?'v-red':errR>0.05?'v-amber':'v-green'}">${fp(errR)}</div><div class="hc-sub">errors + slow vs total · ${pass} clean</div></div>
   `;
 
   function timingCard(label, times, tip){
@@ -809,7 +812,7 @@ function renderStability(r){
 
   function errBreakdown(tcs){
     const m={};
-    tcs.forEach(tc=>{const t=tc.errType;if(t&&t!=='slow')m[t]=(m[t]||0)+1;});
+    tcs.forEach(tc=>{const t=tc.errType;if(t)m[t]=(m[t]||0)+1;});
     return m;
   }
   const allErrBreakdown=errBreakdown(r.filter(x=>x.hasError));
@@ -870,7 +873,7 @@ function renderStability(r){
     </tr>`;
   }
 
-  const noteText=`Seg 0: ${seg0Fail} testcase${seg0Fail!==1?'s':''} failed · ${crPass} passed → enter Segs 1+ pool &nbsp;·&nbsp; Segs 1+: ${pass} fully completed / ${s1pFail} failed at some segment · ${s1pN} total invocations across pool &nbsp;·&nbsp; Click any row with failures to see error type breakdown`;
+  const noteText=`Slow processing is counted as a failure · Seg 0: ${seg0Fail} failed · ${crPass} passed → enter Segs 1+ pool &nbsp;·&nbsp; Segs 1+: ${pass} fully completed / ${s1pFail} failed at some segment &nbsp;·&nbsp; Click any row with failures to see error type breakdown`;
   const chevSvg=`<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
   document.getElementById('stability-gt').innerHTML=`
@@ -1149,17 +1152,14 @@ function renderFailures(r){
   const ffCountEl=document.getElementById('ff-count');
   if(ffCountEl)ffCountEl.textContent=(ffPair||ffCefr||ffErrType)?`${r.length} testcases`:'';
 
-  // donut — dynamic error types (never use truncated fallback strings)
+  // donut — dynamic error types (slow now treated as error type)
   destroyC('donut');
   const errTcs=r.filter(x=>x.hasError);
   const typeMap={};
   for(const tc of errTcs){
     const t=tc.errType||'unknown';
-    if(t!=='slow')typeMap[t]=(typeMap[t]||0)+1;
+    typeMap[t]=(typeMap[t]||0)+1;
   }
-  // slow is a state — add separately
-  const slowTcs=r.filter(x=>x.isSlow);
-  if(slowTcs.length)typeMap['slow']=(typeMap['slow']||0)+slowTcs.length;
   const knownColors={'504':'#EF9F27','500':'#E24B4A','timeout':'#EF9F27','slow':'#185FA5','connection refused':'#E24B4A','rate limit':'#8B5CF6','unknown':'#888'};
   const autoPalette=['#8B5CF6','#10B981','#6366F1','#EC4899','#F59E0B','#6B7280'];let aPalIdx=0;
   const rawL=Object.keys(typeMap),rawC=rawL.map(l=>typeMap[l]),rawCl=rawL.map(l=>knownColors[l]||(autoPalette[aPalIdx++%autoPalette.length]));
@@ -1167,18 +1167,22 @@ function renderFailures(r){
   if(dD.length)charts['donut']=new Chart(document.getElementById('donutChart'),{type:'doughnut',data:{labels:dL,datasets:[{data:dD,backgroundColor:dCl,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw}`}}},onClick:(evt,els)=>{
     if(!els.length)return;
     const lbl=dL[els[0].index];
-    const tcs=lbl==='slow'?r.filter(x=>x.isSlow):r.filter(x=>x.errType===lbl&&x.hasError);
+    const tcs=r.filter(x=>x.errType===lbl&&x.hasError);
     showChartDetail(`Error type: ${lbl==='slow'?'Slow processing':lbl}`,tcs,r);
   }}});
-  document.getElementById('donut-legend').innerHTML=dD.length?dL.map((l,i)=>`<div style="display:flex;align-items:center;gap:5px;cursor:pointer;" onclick="const tcs=${l==='slow'?'allR.filter(x=>x.isSlow)':JSON.stringify([])};"><span style="width:8px;height:8px;border-radius:2px;background:${dCl[i]};flex-shrink:0;display:inline-block;"></span><span style="font-size:12px;">${l==='slow'?'Slow processing':l} — <strong>${dD[i]}</strong></span></div>`).join(''):'<div style="color:var(--green);font-size:12px;">✓ No errors</div>';
+  document.getElementById('donut-legend').innerHTML=dD.length?dL.map((l,i)=>`<div style="display:flex;align-items:center;gap:5px;cursor:pointer;" onclick="showChartDetail('Error type: ${l==='slow'?'Slow processing':l}',allR.filter(x=>x.errType==='${l}'&&x.hasError),allR)"><span style="width:8px;height:8px;border-radius:2px;background:${dCl[i]};flex-shrink:0;display:inline-block;"></span><span style="font-size:12px;">${l==='slow'?'Slow processing':l} — <strong>${dD[i]}</strong></span></div>`).join(''):'<div style="color:var(--green);font-size:12px;">✓ No errors</div>';
 
   // CEFR stacked
   destroyC('cefr');
   const cL=['A1','A2','B1','B2','C1','C2'].filter(l=>r.some(x=>x.cefr===l));
-  charts['cefr']=new Chart(document.getElementById('cefrChart'),{type:'bar',data:{labels:cL,datasets:[{label:'Pass',data:cL.map(l=>r.filter(x=>x.cefr===l&&!x.hasError&&!x.isSlow).length),backgroundColor:'#639922',borderRadius:3,stack:'s'},{label:'Error',data:cL.map(l=>r.filter(x=>x.cefr===l&&x.hasError).length),backgroundColor:'#E24B4A',borderRadius:3,stack:'s'},{label:'Slow',data:cL.map(l=>r.filter(x=>x.cefr===l&&x.isSlow).length),backgroundColor:'#185FA5',borderRadius:3,stack:'s'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8}},tooltip:{callbacks:{label:ctx=>{const l=cL[ctx.dataIndex],tot=r.filter(x=>x.cefr===l).length,f=r.filter(x=>x.cefr===l&&x.hasError).length;return`${ctx.dataset.label}: ${ctx.raw} (${tot?fp(f/tot):'-'} err rate)`;  }}}},scales:{x:{stacked:true,ticks:{font:{size:10}}},y:{stacked:true,beginAtZero:true,ticks:{font:{size:10}},grid:{color:'rgba(128,128,128,0.07)'}}},onClick:(evt,els)=>{
+  charts['cefr']=new Chart(document.getElementById('cefrChart'),{type:'bar',data:{labels:cL,datasets:[
+    {label:'Pass',data:cL.map(l=>r.filter(x=>x.cefr===l&&!x.hasError).length),backgroundColor:'#639922',borderRadius:3,stack:'s'},
+    {label:'Error',data:cL.map(l=>r.filter(x=>x.cefr===l&&x.hasError&&!x.isSlow).length),backgroundColor:'#E24B4A',borderRadius:3,stack:'s'},
+    {label:'Slow',data:cL.map(l=>r.filter(x=>x.cefr===l&&x.isSlow).length),backgroundColor:'#EF9F27',borderRadius:3,stack:'s'}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8}},tooltip:{callbacks:{label:ctx=>{const l=cL[ctx.dataIndex],tot=r.filter(x=>x.cefr===l).length,fail=r.filter(x=>x.cefr===l&&x.hasError).length;return`${ctx.dataset.label}: ${ctx.raw} (${tot?fp(fail/tot):'-'} total fail rate)`;  }}}},scales:{x:{stacked:true,ticks:{font:{size:10}}},y:{stacked:true,beginAtZero:true,ticks:{font:{size:10}},grid:{color:'rgba(128,128,128,0.07)'}}},onClick:(evt,els)=>{
     if(!els.length)return;
     const cefrL=cL[els[0].index],dsLabel=charts['cefr'].data.datasets[els[0].datasetIndex].label;
-    const tcs=dsLabel==='Error'?r.filter(x=>x.cefr===cefrL&&x.hasError):dsLabel==='Slow'?r.filter(x=>x.cefr===cefrL&&x.isSlow):r.filter(x=>x.cefr===cefrL&&!x.hasError&&!x.isSlow);
+    const tcs=dsLabel==='Error'?r.filter(x=>x.cefr===cefrL&&x.hasError&&!x.isSlow):dsLabel==='Slow'?r.filter(x=>x.cefr===cefrL&&x.isSlow):r.filter(x=>x.cefr===cefrL&&!x.hasError);
     showChartDetail(`CEFR ${cefrL} — ${dsLabel}`,tcs,r);
   }}});
 
@@ -1236,7 +1240,7 @@ function populateFilters(r){
   const errTypesHtml='<option value="">All error types</option>'+errTypes.map(t=>`<option value="${t}">${t==='slow'?'Slow processing':t}</option>`).join('');
   document.getElementById('f-errtype').innerHTML=errTypesHtml;
   document.getElementById('ff-errtype').innerHTML=errTypesHtml.replace('All error types','All issue types');
-  document.getElementById('sf-tc-errtype').innerHTML='<option value="">All TC error types</option>'+errTypes.map(t=>`<option value="${t}">${t}</option>`).join('');
+  document.getElementById('sf-tc-errtype').innerHTML='<option value="">All TC error types</option>'+errTypes.map(t=>`<option value="${t}">${t==='slow'?'Slow processing':t}</option>`).join('');
 }
 function attachFilters(){
   ['f-status','f-speed','f-pair','f-cefr','f-errtype','f-segs','f-search'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{expandedRow=null;renderTcTable()}));
@@ -1318,10 +1322,10 @@ function renderTcTable(){
     const bw=x.totalTime!=null?Math.max(2,Math.round(x.totalTime/mxT*55)):0;
     const bc=x.hasError?'#E24B4A':'#639922';
     let sb;
-    if(x.hasContentStepError)sb=`<span class="badge b-cont">content err</span>`;
+    if(x.isSlow)sb=`<span class="badge b-slow">slow</span>`;
+    else if(x.hasContentStepError)sb=`<span class="badge b-cont">content err</span>`;
     else if(x.hasAssemblyError){const et=x.errType||'ERR';sb=`<span class="badge ${et==='504'?'b-504':et==='500'?'b-500':'b-err'}">${et}</span>`;}
     else if(x.hasError)sb=`<span class="badge b-err">${x.errType||'ERR'}</span>`;
-    else if(x.isSlow)sb=`<span class="badge b-slow">slow</span>`;
     else sb=`<span class="badge b-ok">pass</span>`;
     const ssh=x.segTimeShare!=null?fp(x.segTimeShare):'—';
     const sshC=x.segTimeShare!=null?(x.segTimeShare>.75?'var(--amber)':x.segTimeShare<.25?'var(--blue)':'var(--text-2)'):'var(--text-3)';
@@ -1404,8 +1408,8 @@ function renderSegTable(){
       <td>${dh}</td>
       <td style="font-size:12px;font-variant-numeric:tabular-nums;">${fmt(s.tcTotal)}</td>
       <td style="font-weight:600;color:${sshC};font-size:12px;">${ssh}</td>
-      <td>${s.tcHasError?`<span class="badge b-err" style="font-size:9px;">error</span>`:s.tcIsSlow?`<span class="badge b-slow" style="font-size:9px;">slow</span>`:`<span class="badge b-ok" style="font-size:9px;">pass</span>`}</td>
-      <td style="font-size:11px;font-family:var(--mono);">${s.tcHasError&&s.tcErrType&&s.tcErrType!=='unknown'?s.tcErrType:'—'}</td>`;
+      <td>${s.tcIsSlow?`<span class="badge b-slow" style="font-size:9px;">slow</span>`:s.tcHasError?`<span class="badge b-err" style="font-size:9px;">error</span>`:`<span class="badge b-ok" style="font-size:9px;">pass</span>`}</td>
+      <td style="font-size:11px;font-family:var(--mono);">${s.tcHasError&&s.tcErrType?`${s.tcErrType==='slow'?'Slow processing':s.tcErrType}`:'—'}</td>`;
     tbody.appendChild(tr);
   });
 }
