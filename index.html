@@ -407,15 +407,7 @@ window.addEventListener('scroll',()=>{
       <select id="f-pair"><option value="">All pairs</option></select>
       <select id="f-cefr"><option value="">All CEFR</option></select>
       <select id="f-errtype"><option value="">All error types</option></select>
-      <select id="f-segs">
-        <option value="">All seg counts</option>
-        <option value="0">0 segs</option>
-        <option value="1">1 seg</option>
-        <option value="2">2 segs</option>
-        <option value="3">3 segs</option>
-        <option value="4">4 segs</option>
-        <option value="5+">5+ segs</option>
-      </select>
+      <select id="f-segs"><option value="">All seg counts</option></select>
       <input type="text" id="f-search" placeholder="Search name…">
       <span class="f-count" id="tc-count"></span>
     </div>
@@ -450,12 +442,6 @@ window.addEventListener('scroll',()=>{
     <div class="filter-bar">
       <select id="sf-index">
         <option value="">All indices</option>
-        <option value="0">Seg 0 (first)</option>
-        <option value="1">Seg 1</option>
-        <option value="2">Seg 2</option>
-        <option value="3">Seg 3</option>
-        <option value="4">Seg 4</option>
-        <option value="5+">Seg 5+</option>
       </select>
       <select id="sf-pair2"><option value="">All pairs</option></select>
       <select id="sf-cefr2"><option value="">All CEFR</option></select>
@@ -685,8 +671,7 @@ function getStabFiltered(){
   const sg=document.getElementById('stab-f-segs')?.value||'';
   const et=document.getElementById('stab-f-errtype')?.value||'';
   return allR.filter(x=>{
-    if(sg==='5+'&&x.numSegs<5)return false;
-    if(sg&&sg!=='5+'&&x.numSegs!==+sg)return false;
+    if(sg&&x.numSegs!==+sg)return false;
     if(et&&x.errType!==et)return false;
     return true;
   });
@@ -855,34 +840,17 @@ function renderStability(r){
     const bd=errBreakdown(r.filter(x=>x.hasError&&!x.isSlow&&x.segTimes.length===N&&!x.hasContentStepError));
     segRowData.push({N,p,f,t,bd});
   }
-  const SHOW_LIMIT=11;
   let segRowsHtml='';
-  const tailData=[];
   for(const s of segRowData){
-    if(s.N<=SHOW_LIMIT){
-      const rate=s.t?s.f/s.t:0;
-      const hasF=s.f>0;
-      const clickAttr=hasF?` onclick="stabErrToggle(this)"${errAttr(s.bd)}`:'';
-      segRowsHtml+=`<tr class="phase-row stab-seg-child stab-segs1plus-child${hasF?' stab-err-clickable':''}"${clickAttr}>
-        <td class="stab-row-label"><div class="stab-row-inner"><div>
-          <div class="stab-row-name">Seg ${s.N}</div>
-          <div class="stab-row-sub" style="color:#3a5070">testcases with ${s.N+1}+ segs${hasF?' · click for error breakdown':''}</div>
-        </div></div></td>
-        ${numCell(s.t,'testcases','sc-white',true)}${numCell(s.p,fp(s.t?s.p/s.t:0)+' continued','sc-green',true)}${numCell(s.f,s.f?fp(s.f/s.t)+' of pool':'—',s.f?'sc-red':'sc-muted',true)}${numCell(fp(rate),'error rate',rateClass(rate),true)}
-      </tr>`;
-    } else { tailData.push(s); }
-  }
-  if(tailData.length>0){
-    const tT=tailData.reduce((a,x)=>a+x.t,0),tP=tailData.reduce((a,x)=>a+x.p,0),tF=tailData.reduce((a,x)=>a+x.f,0);
-    const tRate=tT?tF/tT:0,tBd={};tailData.forEach(s=>Object.entries(s.bd).forEach(([t,c])=>{tBd[t]=(tBd[t]||0)+c;}));
-    const label=tailData.length===1?`Seg ${tailData[0].N}`:`Seg ${tailData[0].N}–${tailData[tailData.length-1].N}`;
-    const hasF=tF>0;const clickAttr=hasF?` onclick="stabErrToggle(this)"${errAttr(tBd)}`:'';
-    segRowsHtml+=`<tr class="phase-row stab-seg-child stab-seg-tail stab-segs1plus-child${hasF?' stab-err-clickable':''}"${clickAttr}>
+    const rate=s.t?s.f/s.t:0;
+    const hasF=s.f>0;
+    const clickAttr=hasF?` onclick="stabErrToggle(this)"${errAttr(s.bd)}`:'';
+    segRowsHtml+=`<tr class="phase-row stab-seg-child stab-segs1plus-child${hasF?' stab-err-clickable':''}"${clickAttr}>
       <td class="stab-row-label"><div class="stab-row-inner"><div>
-        <div class="stab-row-name">${label} <span class="stab-chip">tail</span></div>
-        <div class="stab-row-sub" style="color:#2a3a4a">pooled · ${tF} edge failure${tF!==1?'s':''}</div>
+        <div class="stab-row-name">Seg ${s.N}</div>
+        <div class="stab-row-sub" style="color:#3a5070">testcases with ${s.N+1}+ segs${hasF?' · click for error breakdown':''}</div>
       </div></div></td>
-      ${numCell(tT,'testcases','sc-white',true)}${numCell(tP,tT?fp(tP/tT)+' continued':'—','sc-green',true)}${numCell(tF,tF?fp(tF/tT)+' of pool':'—',tF?'sc-red':'sc-muted',true)}${numCell(fp(tRate),'error rate',rateClass(tRate),true)}
+      ${numCell(s.t,'testcases','sc-white',true)}${numCell(s.p,fp(s.t?s.p/s.t:0)+' continued','sc-green',true)}${numCell(s.f,s.f?fp(s.f/s.t)+' of pool':'—',s.f?'sc-red':'sc-muted',true)}${numCell(fp(rate),'error rate',rateClass(rate),true)}
     </tr>`;
   }
 
@@ -1006,9 +974,8 @@ function renderLatency(r){
   }
 
   const chevSvg=`<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  const SHOW_LIMIT=11;
   let seg1pRowsHtml='';
-  for(let N=1;N<maxSegIdx&&N<=SHOW_LIMIT;N++){
+  for(let N=1;N<maxSegIdx;N++){
     const segNTimes=r.map(x=>x.segTimes[N]).filter(v=>v!=null);
     if(!segNTimes.length)continue;
     seg1pRowsHtml+=`<tr class="phase-row stab-seg-child lat-segs1plus-child">
@@ -1017,17 +984,6 @@ function renderLatency(r){
         <div class="stab-row-sub" style="color:#3a5070">segment index ${N}</div>
       </div></div></td>
       ${latStatsRowSm(segNTimes,'invocations')}
-    </tr>`;
-  }
-  if(maxSegIdx>SHOW_LIMIT+1){
-    const tailT=[];
-    for(let N=SHOW_LIMIT+1;N<maxSegIdx;N++)r.forEach(x=>{if(x.segTimes[N]!=null)tailT.push(x.segTimes[N]);});
-    if(tailT.length)seg1pRowsHtml+=`<tr class="phase-row stab-seg-child stab-seg-tail lat-segs1plus-child">
-      <td class="stab-row-label"><div class="stab-row-inner"><div>
-        <div class="stab-row-name">Seg ${SHOW_LIMIT+1}–${maxSegIdx-1} <span class="stab-chip">tail</span></div>
-        <div class="stab-row-sub" style="color:#2a3a4a">pooled</div>
-      </div></div></td>
-      ${latStatsRowSm(tailT,'invocations')}
     </tr>`;
   }
 
@@ -1254,6 +1210,14 @@ function populateFilters(r){
   document.getElementById('f-errtype').innerHTML=errTypesHtml;
   document.getElementById('ff-errtype').innerHTML=errTypesHtml.replace('All error types','All issue types');
   document.getElementById('sf-tc-errtype').innerHTML='<option value="">All TC error types</option>'+errTypes.map(t=>`<option value="${t}">${t==='slow'?'Slow processing':t}</option>`).join('');
+  // dynamic seg count filter (f-segs)
+  const segCounts=[...new Set(r.map(x=>x.numSegs))].sort((a,b)=>a-b);
+  document.getElementById('f-segs').innerHTML='<option value="">All seg counts</option>'+segCounts.map(n=>`<option value="${n}">${n} seg${n!==1?'s':''}</option>`).join('');
+  // dynamic seg index filter (sf-index)
+  const maxIdx=r.reduce((a,x)=>Math.max(a,x.segTimes.length),0);
+  let idxHtml='<option value="">All indices</option>';
+  for(let i=0;i<maxIdx;i++)idxHtml+=`<option value="${i}">Seg ${i}${i===0?' (first)':''}</option>`;
+  document.getElementById('sf-index').innerHTML=idxHtml;
 }
 function attachFilters(){
   ['f-status','f-speed','f-pair','f-cefr','f-errtype','f-segs','f-search'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{expandedRow=null;renderTcTable()}));
@@ -1293,8 +1257,7 @@ function getTcFiltered(){
     if(pa&&x.pair!==pa)return false;
     if(ce&&x.cefr!==ce)return false;
     if(et&&x.errType!==et)return false;
-    if(sg==='5+'&&x.numSegs<5)return false;
-    if(sg&&sg!=='5+'&&x.numSegs!==+sg)return false;
+    if(sg&&x.numSegs!==+sg)return false;
     if(se&&!x.name.toLowerCase().includes(se))return false;
     return true;
   });
@@ -1365,8 +1328,7 @@ function getSegFiltered(){
   const ix=document.getElementById('sf-index').value,pa=document.getElementById('sf-pair2').value,ce=document.getElementById('sf-cefr2').value,sp=document.getElementById('sf-speed').value,se=document.getElementById('sf-search').value.toLowerCase();
   const stc=document.getElementById('sf-tc-status').value,etc=document.getElementById('sf-tc-errtype').value;
   return allSegs.filter(s=>{
-    if(ix==='5+'&&s.idx<5)return false;
-    if(ix&&ix!=='5+'&&s.idx!==+ix)return false;
+    if(ix&&s.idx!==+ix)return false;
     if(pa&&s.pair!==pa)return false;
     if(ce&&s.cefr!==ce)return false;
     if(se&&!s.tcName.toLowerCase().includes(se))return false;
