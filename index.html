@@ -52,6 +52,38 @@ window.addEventListener('scroll',()=>{
   .drop-sub{font-size:13px;color:var(--text-2)}
   .drop-hint{font-size:11px;color:var(--text-3);margin-top:1rem}
   #file-input{display:none}
+  .compare-link{margin-top:1.5rem;font-size:12px;color:var(--blue);cursor:pointer;text-decoration:none}
+  .compare-link:hover{text-decoration:underline}
+
+  /* ── compare upload screen ── */
+  #compare-upload-screen{min-height:100vh;display:none;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+  .cmp-shell{max-width:480px;width:100%}
+  .cmp-back{font-size:11px;color:var(--text-3);cursor:pointer;margin-bottom:1.25rem;display:inline-block}
+  .cmp-back:hover{color:var(--text-2)}
+  .cmp-title{font-size:17px;font-weight:600;margin-bottom:.3rem}
+  .cmp-sub{font-size:12px;color:var(--text-2);margin-bottom:1.75rem;line-height:1.5}
+  .cmp-slots{display:flex;flex-direction:column;gap:10px}
+  .cmp-slot{background:var(--surface);border:1.5px dashed var(--border-md);border-radius:12px;padding:.85rem 1rem;transition:border-color .15s,background .15s}
+  .cmp-slot.drag{border-color:var(--text-3);background:var(--surface2)}
+  .cmp-slot.filled{border-style:solid;border-color:var(--border-md)}
+  .cmp-slot-hd{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .cmp-slot-num{font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text-3);text-transform:uppercase;flex-shrink:0}
+  .cmp-slot-label{font-size:12px;font-family:var(--mono);background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);outline:none;flex:1;padding:1px 0}
+  .cmp-slot-label:focus{border-bottom-color:var(--border-md)}
+  .cmp-slot-date{font-size:11px;font-family:var(--mono);background:var(--surface2);border:1px solid var(--border-md);border-radius:4px;color:var(--text-2);padding:1px 5px;outline:none;color-scheme:light dark;flex-shrink:0}
+  .cmp-slot-clear{font-size:12px;color:var(--text-3);cursor:pointer;padding:0 4px;display:none}
+  .cmp-slot.filled .cmp-slot-clear{display:inline}
+  .cmp-slot-body{font-size:12px;color:var(--text-3);cursor:pointer}
+  .cmp-slot-body:hover{color:var(--text-2)}
+  .cmp-slot.filled .cmp-slot-body{color:var(--text-2);cursor:default}
+  .cmp-slot-count{color:var(--green);font-weight:600}
+  .cmp-slot-err{color:var(--red)}
+  .cmp-add3{font-size:11px;color:var(--blue);cursor:pointer;margin-top:2px;display:inline-block}
+  .cmp-add3:hover{text-decoration:underline}
+  .cmp-order-note{font-size:10.5px;color:var(--text-3);margin-top:.85rem;line-height:1.5}
+  .cmp-go{margin-top:1.25rem;width:100%;font-size:13px;font-weight:600;padding:10px;border-radius:var(--radius-sm);border:none;background:var(--blue);color:#fff;cursor:pointer}
+  .cmp-go:disabled{background:var(--surface3);color:var(--text-3);cursor:not-allowed}
+  .cmp-go:not(:disabled):hover{opacity:.9}
 
   /* ── dashboard shell ── */
   #dashboard{display:none;flex-direction:column;min-height:100vh}
@@ -189,6 +221,17 @@ window.addEventListener('scroll',()=>{
   .b-500{background:var(--red-bg);color:var(--red)}
   .b-cont{background:var(--blue-bg);color:var(--blue)}
   .b-slow{background:var(--blue-bg);color:var(--blue)}
+  .b-absent{background:var(--surface2);color:var(--text-3);border:1px dashed var(--border-md)}
+
+  /* compare-mode classification badges */
+  .b-cls-regress{background:var(--red-bg);color:var(--red)}
+  .b-cls-fixed{background:var(--green-bg);color:var(--green)}
+  .b-cls-flaky{background:var(--purple-bg);color:var(--purple)}
+  .b-cls-new{background:var(--blue-bg);color:var(--blue)}
+  .b-cls-removed{background:var(--surface2);color:var(--text-3);border:1px solid var(--border-md)}
+  .b-cls-partial{background:var(--amber-bg);color:var(--amber)}
+  .b-cls-always-pass{background:var(--green-bg);color:var(--green)}
+  .b-cls-always-fail{background:var(--red-bg);color:var(--red)}
 
   /* mini bar for time column */
   .tbw{display:flex;align-items:center;gap:5px}
@@ -285,6 +328,20 @@ window.addEventListener('scroll',()=>{
     <div class="drop-hint">Accepts .out · .txt · .log · parsed entirely in-browser</div>
   </div>
   <input type="file" id="file-input" accept=".out,.txt,.log">
+  <div class="compare-link" onclick="showCompareUpload()">Compare multiple runs →</div>
+</div>
+
+<!-- ══ COMPARE UPLOAD ══ -->
+<div id="compare-upload-screen">
+  <div class="cmp-shell">
+    <span class="cmp-back" onclick="backToMainUpload()">← Back</span>
+    <div class="cmp-title">Compare runs</div>
+    <div class="cmp-sub">Load 2–3 result files to see progress, regressions, and stability across runs.</div>
+    <div class="cmp-slots" id="cmp-slots"></div>
+    <span class="cmp-add3" id="cmp-add3-btn" onclick="showCmpSlot3()">+ Add a third run</span>
+    <div class="cmp-order-note">Dates are auto-detected from each filename and used to order runs chronologically — the slot you drop a file in doesn't matter. Check the detected date next to each label and correct it if it's wrong; regressions and fixes are measured oldest → newest.</div>
+    <button class="cmp-go" id="cmp-go-btn" disabled onclick="runCompare()">Compare Runs →</button>
+  </div>
 </div>
 
 <!-- ══ DASHBOARD ══ -->
@@ -373,8 +430,11 @@ window.addEventListener('scroll',()=>{
       </div>
       <!-- 4d: Language pair -->
       <div class="card">
-        <div class="card-title">Error rate by language pair <span class="tip-i" data-tip="Top pairs by volume. Red >15%, amber 5–15%, green <5%. Click a bar to see affected testcases.">?</span></div>
-        <div style="position:relative;height:160px;"><canvas id="pairChart"></canvas><noscript><p style="font-size:11px;color:var(--text-3);margin-top:6px;">Enable JavaScript to view chart.</p></noscript></div>
+        <div class="card-title">Error rate by language pair <span class="tip-i" data-tip="All pairs, sorted by volume. Red >15%, amber 5–15%, green <5%. Click a bar to see affected testcases. Scrolls if there are more than ~7 pairs.">?</span></div>
+        <div style="max-height:160px;overflow-y:auto;overflow-x:hidden;" id="pairChartScroll">
+          <div style="position:relative;" id="pairChartInner"><canvas id="pairChart"></canvas></div>
+        </div>
+        <noscript><p style="font-size:11px;color:var(--text-3);margin-top:6px;">Enable JavaScript to view chart.</p></noscript>
       </div>
     </div>
     <!-- Chart detail panel (populated on click) -->
@@ -483,6 +543,88 @@ window.addEventListener('scroll',()=>{
   </div><!-- /main -->
 </div><!-- /dashboard -->
 
+<!-- ══ COMPARE DASHBOARD ══ -->
+<div id="compare-dashboard" style="display:none;flex-direction:column;min-height:100vh">
+  <div class="top-bar">
+    <span class="top-bar-brand">Ella NLP · Compare</span>
+    <div class="top-bar-sep"></div>
+    <span class="top-bar-file" id="cmp-tb-runs">—</span>
+    <div class="top-bar-right">
+      <span class="top-bar-meta" id="cmp-tb-meta"></span>
+      <button class="share-btn" id="cmp-share-btn" onclick="shareCompare()" title="Download a self-contained HTML snapshot of this comparison">⬇ Export snapshot</button>
+      <button class="reload-btn" onclick="resetToCompareUpload()">↩ New comparison</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="section-hd">
+      <span class="section-num">C</span>
+      <span class="section-title">Run comparison</span>
+      <span class="section-desc" id="cmp-desc"></span>
+    </div>
+    <div id="cmp-date-warning" style="display:none;font-size:11px;color:var(--amber);background:var(--amber-bg);border:1px solid var(--border-md);border-radius:6px;padding:6px 10px;margin-bottom:.75rem;"></div>
+    <div class="hero-row" id="cmp-hero-row"></div>
+
+    <div class="section-hd">
+      <span class="section-num">C1</span>
+      <span class="section-title">Per-run summary</span>
+      <span class="section-desc">Aggregate stability and latency, run over run</span>
+    </div>
+    <div id="cmp-summary-grid"></div>
+
+    <div class="section-hd">
+      <span class="section-num">C2</span>
+      <span class="section-title">Testcase comparison</span>
+      <span class="section-desc">One row per testcase, matched by name across runs · click to expand</span>
+    </div>
+    <div class="filter-bar">
+      <select id="cf-class">
+        <option value="">All classifications</option>
+        <option value="regressed">Regressed</option>
+        <option value="fixed">Fixed</option>
+        <option value="flaky">Flaky</option>
+        <option value="always-pass">Always pass</option>
+        <option value="always-fail">Always fail</option>
+        <option value="new">New</option>
+        <option value="removed">Removed</option>
+        <option value="partial">Partial</option>
+      </select>
+      <select id="cf-stage">
+        <option value="">All stages (latest run)</option>
+        <option value="pass">Pass</option>
+        <option value="slow">Slow</option>
+        <option value="content-err">Content step error</option>
+        <option value="segment-0-err">Segment 0 error</option>
+        <option value="later-segment-err">Later-segment error</option>
+      </select>
+      <select id="cf-bucket">
+        <option value="">All lengths</option>
+        <option value="short">Short (1–4 segs)</option>
+        <option value="medium">Medium (5–19 segs)</option>
+        <option value="long">Long (20–39 segs)</option>
+        <option value="verylong">Very long (40+ segs)</option>
+      </select>
+      <select id="cf-segs"><option value="">All seg counts</option></select>
+      <select id="cf-errtype"><option value="">All error types</option></select>
+      <select id="cf-pair"><option value="">All pairs</option></select>
+      <select id="cf-cefr"><option value="">All CEFR</option></select>
+      <select id="cf-exclude-lang"><option value="">Exclude language…</option></select>
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2);cursor:pointer;">
+        <input type="checkbox" id="cf-annotated-only" style="cursor:pointer;"> 📝 Only annotated
+      </label>
+      <input type="text" id="cf-search" placeholder="Search name…">
+      <span class="f-count" id="cf-count"></span>
+    </div>
+    <div class="istrip" id="cmp-stage-istrip" style="margin-bottom:.75rem;" data-tip="Computed from classification/pair/CEFR/exclude-language/search/annotated filters only — ignores the stage/length/error-type filters above, so you can e.g. set 'Exclude language' to ar-EG and read the segment-0 fail rate directly."></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr id="cmp-thead-row"></tr></thead>
+        <tbody id="cmp-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div id="tt"></div>
 
 <script>
@@ -527,7 +669,39 @@ function shareRun(){
   }
 }
 
-
+// ══ export compare snapshot (mirrors shareRun, keyed on window.__COMPARE_SNAPSHOT__) ══
+function shareCompare(){
+  if(!cmpRuns.length)return;
+  const btn=document.getElementById('cmp-share-btn');
+  btn.textContent='⏳ Building…';btn.disabled=true;
+  try{
+    const snapshot={runs:cmpRuns.map(r=>({label:r.label,filename:r.filename,date:r.date,results:r.results})),datesResolved:cmpDatesResolved,annotations:cmpAnnotations};
+    const safeJson=JSON.stringify(snapshot).replace(/<\/script/gi,'<\\/script');
+    const snapshotScript=`<script>window.__COMPARE_SNAPSHOT__=${safeJson};<\/script>`;
+    const rawHtml=document.documentElement.outerHTML;
+    const injected=rawHtml.replace(
+      /(<script[^>]*>window\.__COMPARE_SNAPSHOT__[\s\S]*?<\/script>\s*)?(<\/head>)/i,
+      snapshotScript+'$2'
+    );
+    const html='<!DOCTYPE html>\n'+injected;
+    const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.style.display='none';
+    document.body.appendChild(a);
+    const labelPart=cmpRuns.map(r=>r.label).join('-vs-').replace(/[^a-z0-9\-]+/gi,'_').slice(0,60);
+    a.href=url;
+    a.download=`ella-nlp-compare-${labelPart||'runs'}-snapshot.html`;
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    btn.textContent='✓ Downloaded';
+    setTimeout(()=>{btn.textContent='⬇ Export snapshot';btn.disabled=false},2000);
+  }catch(e){
+    alert('Export error: '+e.message);
+    btn.textContent='⬇ Export snapshot';btn.disabled=false;
+  }
+}
 
 
 // ══ tooltip ══
@@ -550,8 +724,500 @@ fi.addEventListener('change',()=>{if(fi.files[0])readF(fi.files[0])});
 function readF(f){const r=new FileReader();r.onload=e=>parse(e.target.result,f.name);r.readAsText(f)}
 function resetToUpload(){document.getElementById('upload-screen').style.display='flex';document.getElementById('dashboard').style.display='none';fi.value='';allR=[];allSegs=[];history.replaceState(null,'',location.pathname+location.search)}
 
-// restore from baked-in snapshot (exported HTML files have __SNAPSHOT__ injected)
+// ══ compare-mode: run upload slots ══
+let compareSlots=[null,null,null];
+let cmpBuilt=false;
+
+function showCompareUpload(){
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('compare-upload-screen').style.display='flex';
+  if(!cmpBuilt){buildCmpSlots();cmpBuilt=true;}
+}
+function backToMainUpload(){
+  document.getElementById('compare-upload-screen').style.display='none';
+  document.getElementById('upload-screen').style.display='flex';
+}
+
+// Detects a date embedded in a result filename so runs can be ordered
+// chronologically rather than by upload order. Tries ISO (YYYY-MM-DD) first,
+// then DD.MM.YYYY, then bare DD.MM (assumes current year).
+function parseDateFromFilename(filename){
+  if(!filename)return null;
+  let m=filename.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m){
+    const y=+m[1],mo=+m[2],d=+m[3];
+    if(mo>=1&&mo<=12&&d>=1&&d<=31)return`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  m=filename.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if(m){
+    const d=+m[1],mo=+m[2],y=+m[3];
+    if(mo>=1&&mo<=12&&d>=1&&d<=31)return`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  m=filename.match(/(?:^|[^\d])(\d{1,2})\.(\d{1,2})(?!\d)/);
+  if(m){
+    const d=+m[1],mo=+m[2];
+    if(mo>=1&&mo<=12&&d>=1&&d<=31)return`${new Date().getFullYear()}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  return null;
+}
+
+function buildCmpSlots(){
+  const wrap=document.getElementById('cmp-slots');
+  wrap.innerHTML='';
+  for(let idx=0;idx<3;idx++){
+    const slot=document.createElement('div');
+    slot.className='cmp-slot';
+    slot.id='cmp-slot-'+idx;
+    if(idx===2)slot.style.display='none';
+    const tag=idx===2?' (optional)':'';
+    slot.innerHTML=`
+      <div class="cmp-slot-hd">
+        <span class="cmp-slot-num">Run ${idx+1}${tag}</span>
+        <input class="cmp-slot-label" id="cmp-label-${idx}" placeholder="label" style="display:none">
+        <input type="date" class="cmp-slot-date" id="cmp-date-${idx}" title="Run date — auto-detected from filename, edit if wrong" style="display:none">
+        <span class="cmp-slot-clear" id="cmp-clear-${idx}" onclick="clearCmpSlot(${idx})">✕</span>
+      </div>
+      <div class="cmp-slot-body" id="cmp-body-${idx}" onclick="document.getElementById('cmp-file-${idx}').click()">Click to browse or drag &amp; drop a result file</div>
+      <input type="file" id="cmp-file-${idx}" accept=".out,.txt,.log" style="display:none">
+    `;
+    wrap.appendChild(slot);
+    const fileInput=slot.querySelector('#cmp-file-'+idx);
+    fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadCmpSlotFile(idx,fileInput.files[0])});
+    slot.addEventListener('dragover',e=>{e.preventDefault();if(!compareSlots[idx])slot.classList.add('drag')});
+    slot.addEventListener('dragleave',()=>slot.classList.remove('drag'));
+    slot.addEventListener('drop',e=>{e.preventDefault();slot.classList.remove('drag');if(!compareSlots[idx]&&e.dataTransfer.files[0])loadCmpSlotFile(idx,e.dataTransfer.files[0])});
+  }
+}
+
+function showCmpSlot3(){
+  document.getElementById('cmp-slot-2').style.display='';
+  document.getElementById('cmp-add3-btn').style.display='none';
+}
+
+function loadCmpSlotFile(idx,file){
+  const r=new FileReader();
+  r.onload=e=>{
+    const txt=e.target.result;
+    let results=[];
+    try{results=parseRunResults(txt)}catch(err){results=[]}
+    const body=document.getElementById('cmp-body-'+idx);
+    const slot=document.getElementById('cmp-slot-'+idx);
+    if(!results.length){
+      body.innerHTML=`<span class="cmp-slot-err">Couldn't parse any testcases from "${file.name}" — try another file.</span>`;
+      compareSlots[idx]=null;
+      slot.classList.remove('filled');
+      updateCmpGoState();
+      return;
+    }
+    const label=(file.name||'run').replace(/\.[^.]+$/,'');
+    const detectedDate=parseDateFromFilename(file.name);
+    compareSlots[idx]={label,filename:file.name,date:detectedDate,results};
+    slot.classList.add('filled');
+    body.innerHTML=`<span class="cmp-slot-count">${results.length} testcases</span> parsed from <span style="font-family:var(--mono)">${file.name}</span>`+
+      (detectedDate?'':' <span class="cmp-slot-err" style="font-size:10px;">— couldn\'t detect a date, set one →</span>');
+    const labelInput=document.getElementById('cmp-label-'+idx);
+    labelInput.style.display='';
+    labelInput.value=label;
+    labelInput.oninput=()=>{compareSlots[idx].label=labelInput.value||label};
+    const dateInput=document.getElementById('cmp-date-'+idx);
+    dateInput.style.display='';
+    dateInput.value=detectedDate||'';
+    dateInput.oninput=()=>{compareSlots[idx].date=dateInput.value||null};
+    updateCmpGoState();
+  };
+  r.readAsText(file);
+}
+
+function clearCmpSlot(idx){
+  compareSlots[idx]=null;
+  const slot=document.getElementById('cmp-slot-'+idx);
+  slot.classList.remove('filled');
+  document.getElementById('cmp-body-'+idx).textContent='Click to browse or drag & drop a result file';
+  document.getElementById('cmp-file-'+idx).value='';
+  const labelInput=document.getElementById('cmp-label-'+idx);
+  labelInput.style.display='none';labelInput.value='';
+  const dateInput=document.getElementById('cmp-date-'+idx);
+  dateInput.style.display='none';dateInput.value='';
+  updateCmpGoState();
+}
+
+function updateCmpGoState(){
+  document.getElementById('cmp-go-btn').disabled=compareSlots.filter(Boolean).length<2;
+}
+
+// ══ compare-mode: comparison engine ══
+let cmpRuns=[];   // active runs for the current comparison: [{label,filename,date,results}, ...]
+let cmpRows=[];   // one entry per unique testcase name, classified across runs
+let cmpDatesResolved=true; // whether every run had a usable date, so chronological sort was reliable
+let cmpAnnotations={};     // {[testcaseName]: {note, logfireLink}} — manual review notes, persisted in export
+
+function runCompare(){
+  const filled=compareSlots.filter(Boolean);
+  if(filled.length<2)return;
+  cmpDatesResolved=filled.every(r=>r.date);
+  // Chronological order (oldest → newest) drives regression/fix direction. If any
+  // run's date couldn't be resolved, fall back to upload order rather than guess.
+  cmpRuns=cmpDatesResolved?[...filled].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0):filled;
+  cmpRows=buildComparison(cmpRuns);
+  document.getElementById('compare-upload-screen').style.display='none';
+  renderCompareDashboard();
+}
+
+// Matches testcases across runs by name, then classifies each by its pass/fail
+// sequence across the runs (in upload order: oldest → newest).
+function buildComparison(runs){
+  const byName=new Map();
+  runs.forEach((run,ri)=>{
+    run.results.forEach(tc=>{
+      if(!byName.has(tc.name))byName.set(tc.name,{name:tc.name,pair:tc.pair,cefr:tc.cefr,srcLang:tc.srcLang,tgtLang:tc.tgtLang,perRun:new Array(runs.length).fill(null)});
+      byName.get(tc.name).perRun[ri]=tc;
+    });
+  });
+  return[...byName.values()].map(classifyEntry);
+}
+
+// Maps a testcase's failure to the pipeline phase it broke at — mirrors the
+// same buckets the main dashboard's Stability section (§2) uses, so compare-mode
+// filtering lines up with the single-run breakdown.
+function tcStage(tc){
+  if(!tc)return null;
+  if(tc.isSlow)return'slow';
+  if(tc.hasContentStepError)return'content-err';
+  if(tc.hasError&&tc.seg0Time==null)return'segment-0-err';
+  if(tc.hasError)return'later-segment-err';
+  return'pass';
+}
+
+// Content-length cohort — the Slack discussion repeatedly groups failures by
+// "long content (40+ segments)" vs "short/medium (1-4 segments)"; this is that grouping.
+function segBucket(n){
+  if(n==null)return null;
+  if(n<=4)return'short';
+  if(n<=19)return'medium';
+  if(n<=39)return'long';
+  return'verylong';
+}
+
+function classifyEntry(entry){
+  const perRun=entry.perRun;
+  const present=perRun.map(tc=>tc!=null);
+  const presentIdx=present.map((p,i)=>p?i:-1).filter(i=>i>=0);
+  let cls;
+  if(presentIdx.length<perRun.length){
+    const first=presentIdx[0],last=presentIdx[presentIdx.length-1];
+    if(first===0&&last<perRun.length-1)cls='removed';        // was there, disappeared
+    else if(first>0&&last===perRun.length-1)cls='new';        // wasn't there, appeared and stuck
+    else cls='partial';                                       // present only intermittently
+  }else{
+    const seq=perRun.map(tc=>!tc.hasError);
+    let transitions=0;
+    for(let i=1;i<seq.length;i++)if(seq[i]!==seq[i-1])transitions++;
+    if(transitions===0)cls=seq[0]?'always-pass':'always-fail';
+    else if(transitions===1)cls=(seq[0]&&!seq[seq.length-1])?'regressed':(!seq[0]&&seq[seq.length-1])?'fixed':'flaky';
+    else cls='flaky';
+  }
+  entry.classification=cls;
+  entry.deltaTotalTime=deltaFirstLast(perRun,'totalTime');
+  entry.deltaContentReady=deltaFirstLast(perRun,'contentReadyTime');
+  // Same failure across runs can still shift error code (503→500 etc — often a sign
+  // of backend overload/timeout rather than one fixable bug). Flag it when it happens.
+  const erroredPresent=perRun.filter(tc=>tc&&tc.hasError);
+  if(erroredPresent.length>=2){
+    const from=erroredPresent[0].errType,to=erroredPresent[erroredPresent.length-1].errType;
+    if(from&&to&&from!==to)entry.errTypeShift={from,to};
+  }
+  return entry;
+}
+
+// Timing delta between the first and last run this testcase is present in.
+// Flagged unreliable if either endpoint errored — an errored run's totalTime is
+// often a truncated early-exit, not a real wall-time comparison (a "faster" error
+// looks like an improvement but isn't one).
+function deltaFirstLast(perRun,field){
+  const presentTc=perRun.filter(Boolean);
+  if(presentTc.length<2)return null;
+  const first=presentTc[0],last=presentTc[presentTc.length-1];
+  const a=first[field],b=last[field];
+  if(a==null||b==null)return null;
+  return{abs:b-a,pct:a?(b-a)/a:null,unreliable:first.hasError||last.hasError};
+}
+
+function resetToCompareUpload(){
+  document.getElementById('compare-dashboard').style.display='none';
+  compareSlots=[null,null,null];
+  cmpRuns=[];cmpRows=[];cmpDatesResolved=true;cmpAnnotations={};
+  buildCmpSlots();
+  document.getElementById('cmp-add3-btn').style.display='';
+  updateCmpGoState();
+  document.getElementById('compare-upload-screen').style.display='flex';
+}
+
+// ══ compare-mode: dashboard rendering ══
+let cmpExpandedRow=null;
+const CLS_META={
+  'always-pass':{label:'Always pass',cls:'b-cls-always-pass'},
+  'always-fail':{label:'Always fail',cls:'b-cls-always-fail'},
+  'regressed':{label:'Regressed',cls:'b-cls-regress'},
+  'fixed':{label:'Fixed',cls:'b-cls-fixed'},
+  'flaky':{label:'Flaky',cls:'b-cls-flaky'},
+  'new':{label:'New',cls:'b-cls-new'},
+  'removed':{label:'Removed',cls:'b-cls-removed'},
+  'partial':{label:'Partial',cls:'b-cls-partial'},
+};
+
+function renderCompareDashboard(){
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('compare-upload-screen').style.display='none';
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('compare-dashboard').style.display='flex';
+
+  document.getElementById('cmp-tb-runs').textContent=cmpRuns.map(r=>r.label+(r.date?` (${r.date})`:'')).join('  →  ');
+  document.getElementById('cmp-tb-meta').textContent=`${cmpRuns.length} runs`+(cmpDatesResolved?'':' · dates unresolved');
+  document.getElementById('cmp-desc').textContent=`${cmpRows.length} unique testcases matched by name`;
+  const warnEl=document.getElementById('cmp-date-warning');
+  if(!cmpDatesResolved){
+    warnEl.style.display='block';
+    warnEl.textContent=`⚠ Couldn't detect a date for every run — comparing in upload order (${cmpRuns.map(r=>r.label).join(' → ')}). Set dates manually on the compare screen for accurate chronological regression/progress analysis.`;
+  }else{
+    warnEl.style.display='none';
+  }
+
+  renderCmpHero();
+  renderCmpSummaryGrid();
+  populateCmpFilters();
+  cmpExpandedRow=null;
+  renderCmpTable();
+  attachCmpFilters();
+}
+
+function renderCmpHero(){
+  const n=cmpRows.length;
+  const counts={};
+  cmpRows.forEach(r=>counts[r.classification]=(counts[r.classification]||0)+1);
+  const c=k=>counts[k]||0;
+  document.getElementById('cmp-hero-row').innerHTML=`
+    <div class="hero-card c-neutral"><div class="hc-label">Total testcases</div><div class="hc-val">${n}</div><div class="hc-sub">matched by name</div></div>
+    <div class="hero-card c-green"><div class="hc-label">Always pass</div><div class="hc-val v-green">${c('always-pass')}</div><div class="hc-sub">${fp(n?c('always-pass')/n:0)}</div></div>
+    <div class="hero-card ${c('always-fail')?'c-red':'c-green'}"><div class="hc-label">Always fail</div><div class="hc-val ${c('always-fail')?'v-red':'v-green'}">${c('always-fail')}</div><div class="hc-sub">${fp(n?c('always-fail')/n:0)}</div></div>
+    <div class="hero-card ${c('regressed')?'c-red':'c-green'}"><div class="hc-label">Regressed</div><div class="hc-val ${c('regressed')?'v-red':'v-green'}">${c('regressed')}</div><div class="hc-sub">passed → now failing</div></div>
+    <div class="hero-card c-green"><div class="hc-label">Fixed</div><div class="hc-val v-green">${c('fixed')}</div><div class="hc-sub">failed → now passing</div></div>
+    <div class="hero-card ${c('flaky')?'c-amber':'c-green'}"><div class="hc-label">Flaky</div><div class="hc-val ${c('flaky')?'v-amber':'v-green'}">${c('flaky')}</div><div class="hc-sub">inconsistent across runs</div></div>
+    <div class="hero-card c-blue"><div class="hc-label">New</div><div class="hc-val">${c('new')}</div><div class="hc-sub">not in baseline run</div></div>
+    <div class="hero-card c-neutral"><div class="hc-label">Removed</div><div class="hc-val">${c('removed')}</div><div class="hc-sub">missing from latest run</div></div>
+  `;
+}
+
+function renderCmpSummaryGrid(){
+  const cols=cmpRuns.map(r=>({label:r.label}));
+  const rows=[];
+  rows.push({label:'Total tests',accent:'blue',cells:cmpRuns.map(r=>({v:r.results.length}))});
+  rows.push({label:'Pass rate',accent:'green',cells:cmpRuns.map(r=>{
+    const n=r.results.length,pass=r.results.filter(x=>!x.hasError).length,rate=n?pass/n:0;
+    return{v:fp(rate),s:`${pass}/${n} passed`,color:rate<0.85?'var(--red)':'var(--green)'};
+  })});
+  rows.push({label:'Median Total E2E',accent:'amber',cells:cmpRuns.map(r=>({v:fmt(med(r.results.map(x=>x.totalTime).filter(v=>v!=null)))}))});
+  rows.push({label:'P90 Total E2E',accent:'amber',cells:cmpRuns.map(r=>({v:fmt(pct(r.results.map(x=>x.totalTime).filter(v=>v!=null),90))}))});
+  rows.push({label:'Median Content Ready',accent:'purple',cells:cmpRuns.map(r=>({v:fmt(med(r.results.map(x=>x.contentReadyTime).filter(v=>v!=null)))}))});
+  document.getElementById('cmp-summary-grid').innerHTML=`<div class="gt-wrap">${gridBlock(cols,rows,'190px')}</div>`;
+}
+
+function populateCmpFilters(){
+  const pairs=[...new Set(cmpRows.map(x=>x.pair))].filter(Boolean).sort();
+  const cefrs=[...new Set(cmpRows.map(x=>x.cefr))].filter(Boolean).sort();
+  document.getElementById('cf-pair').innerHTML='<option value="">All pairs</option>'+pairs.map(p=>`<option value="${p}">${p}</option>`).join('');
+  document.getElementById('cf-cefr').innerHTML='<option value="">All CEFR</option>'+cefrs.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+  const segCounts=new Set(),errTypes=new Set(),langs=new Set();
+  cmpRuns.forEach(r=>r.results.forEach(tc=>{
+    segCounts.add(tc.numSegs);
+    if(tc.errType)errTypes.add(tc.errType);
+    if(tc.srcLang)langs.add(tc.srcLang);
+    if(tc.tgtLang)langs.add(tc.tgtLang);
+  }));
+  const segList=[...segCounts].sort((a,b)=>a-b);
+  document.getElementById('cf-segs').innerHTML='<option value="">All seg counts</option>'+segList.map(n=>`<option value="${n}">${n} seg${n!==1?'s':''}</option>`).join('');
+  const errList=[...errTypes].sort();
+  document.getElementById('cf-errtype').innerHTML='<option value="">All error types</option>'+errList.map(t=>`<option value="${t}">${t==='slow'?'Slow processing':t}</option>`).join('');
+  const langList=[...langs].sort();
+  document.getElementById('cf-exclude-lang').innerHTML='<option value="">Exclude language…</option>'+langList.map(l=>`<option value="${l}">${l}</option>`).join('');
+}
+
+// "Latest run" here = the last run this testcase is present in (usually the most
+// recent upload) — the stage/segs/errtype filters describe current-state cohorts,
+// matching how Ziv/Oren's questions were framed ("of the 133 that had good segment 0…").
+// Base filters only (classification/pair/CEFR/search/exclude-language/annotated) —
+// deliberately excludes stage/length/error-type so renderCmpStageStrip() can show
+// the stage breakdown of whatever cohort these narrow down to (e.g. "exclude ar-EG").
+function getCmpContextRows(){
+  const cls=document.getElementById('cf-class').value;
+  const pa=document.getElementById('cf-pair').value;
+  const ce=document.getElementById('cf-cefr').value;
+  const se=document.getElementById('cf-search').value.toLowerCase();
+  const exLang=document.getElementById('cf-exclude-lang').value;
+  const annOnly=document.getElementById('cf-annotated-only').checked;
+  return cmpRows.filter(r=>{
+    if(cls&&r.classification!==cls)return false;
+    if(pa&&r.pair!==pa)return false;
+    if(ce&&r.cefr!==ce)return false;
+    if(se&&!r.name.toLowerCase().includes(se))return false;
+    if(exLang&&(r.srcLang===exLang||r.tgtLang===exLang))return false;
+    if(annOnly){
+      const a=cmpAnnotations[r.name];
+      if(!a||!(a.note||a.logfireLink))return false;
+    }
+    return true;
+  });
+}
+
+function getCmpFiltered(){
+  const stage=document.getElementById('cf-stage').value;
+  const bucket=document.getElementById('cf-bucket').value;
+  const segs=document.getElementById('cf-segs').value;
+  const errt=document.getElementById('cf-errtype').value;
+  return getCmpContextRows().filter(r=>{
+    if(stage||bucket||segs||errt){
+      const latest=r.perRun.filter(Boolean).slice(-1)[0];
+      if(stage&&tcStage(latest)!==stage)return false;
+      if(bucket&&segBucket(latest?latest.numSegs:null)!==bucket)return false;
+      if(segs&&(!latest||latest.numSegs!==+segs))return false;
+      if(errt&&(!latest||latest.errType!==errt))return false;
+    }
+    return true;
+  });
+}
+
+// Answers "what's the fail rate of segment 0 [within some cohort]" directly in the
+// UI — set Pair/CEFR/Exclude-language/etc. above and read the rates here, instead
+// of hand-counting like the original Slack thread had to.
+function renderCmpStageStrip(){
+  const rows=getCmpContextRows();
+  const stages=rows.map(r=>tcStage(r.perRun.filter(Boolean).slice(-1)[0]));
+  const n=stages.length;
+  const cnt=k=>stages.filter(s=>s===k).length;
+  const pass=cnt('pass'),slow=cnt('slow'),cErr=cnt('content-err'),s0Err=cnt('segment-0-err'),laterErr=cnt('later-segment-err');
+  document.getElementById('cmp-stage-istrip').innerHTML=istrip([
+    {v:n,l:'testcases in this cohort'},
+    {v:fp(n?pass/n:0),l:'pass rate (latest run)',c:'var(--green)'},
+    {v:fp(n?s0Err/n:0),l:'segment 0 fail rate',c:s0Err?'var(--red)':'var(--text-3)'},
+    {v:s0Err,l:'segment 0 errors',c:s0Err?'var(--red)':'var(--text-3)'},
+    {v:cErr,l:'content-step errors',c:cErr?'var(--red)':'var(--text-3)'},
+    {v:laterErr,l:'later-segment errors',c:laterErr?'var(--red)':'var(--text-3)'},
+    {v:slow,l:'slow',c:slow?'var(--amber)':'var(--text-3)'},
+  ]);
+}
+
+function attachCmpFilters(){
+  ['cf-class','cf-pair','cf-cefr','cf-search','cf-stage','cf-bucket','cf-segs','cf-errtype','cf-exclude-lang','cf-annotated-only'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{cmpExpandedRow=null;renderCmpTable()}));
+}
+
+function statusBadgeForTc(tc){
+  if(!tc)return`<span class="badge b-absent">absent</span>`;
+  if(tc.isSlow)return`<span class="badge b-slow">slow</span>`;
+  if(tc.hasError)return`<span class="badge b-err">${tc.errType||'err'}</span>`;
+  return`<span class="badge b-ok">pass</span>`;
+}
+
+function fmtDelta(d){
+  if(!d)return`<span style="color:var(--text-3)">—</span>`;
+  const sign=d.abs>0.001?'+':d.abs<-0.001?'−':'';
+  const mag=fmt(Math.abs(d.abs));
+  const pctTxt=(d.pct!=null&&isFinite(d.pct))?` (${sign}${Math.abs(d.pct*100).toFixed(0)}%)`:'';
+  const color=d.unreliable?'var(--text-3)':d.abs>0.5?'var(--red)':d.abs<-0.5?'var(--green)':'var(--text-3)';
+  const tip=d.unreliable?' data-tip="Not a reliable comparison — one side errored, so its wall time may be a truncated early-exit."':'';
+  return`<span style="color:${color};font-weight:600;"${tip}>${sign}${mag}${pctTxt}</span>`;
+}
+
+function cmpTheadHtml(){
+  let h='<th>Name</th><th>Pair</th><th>CEFR</th>';
+  cmpRuns.forEach(r=>h+=`<th>${r.label}</th>`);
+  h+='<th>Classification</th><th>Δ Total E2E</th><th>Δ Content ready</th>';
+  return h;
+}
+
+function renderCmpTable(){
+  document.getElementById('cmp-thead-row').innerHTML=cmpTheadHtml();
+  renderCmpStageStrip();
+  const rows=getCmpFiltered();
+  document.getElementById('cf-count').textContent=`${rows.length} / ${cmpRows.length} testcases`;
+  const tbody=document.getElementById('cmp-tbody');tbody.innerHTML='';
+  rows.forEach(entry=>{
+    const tr=document.createElement('tr');
+    const meta=CLS_META[entry.classification]||{label:entry.classification,cls:''};
+    const noteMark=cmpAnnotations[entry.name]&&(cmpAnnotations[entry.name].note||cmpAnnotations[entry.name].logfireLink)?'<span title="Has review notes" style="margin-right:4px;">📝</span>':'';
+    let html=`<td class="mono" title="${entry.name}">${noteMark}${entry.name}</td><td style="font-size:11px;">${entry.pair||'—'}</td><td style="font-size:11px;">${entry.cefr||'—'}</td>`;
+    entry.perRun.forEach(tc=>html+=`<td>${statusBadgeForTc(tc)}</td>`);
+    const shiftTxt=entry.errTypeShift?` <span style="color:var(--text-3);font-size:10px;font-family:var(--mono);" data-tip="Same failure, different error code across runs — often backend overload/timeout rather than one fixable bug.">${entry.errTypeShift.from}→${entry.errTypeShift.to}</span>`:'';
+    html+=`<td><span class="badge ${meta.cls}">${meta.label}</span>${shiftTxt}</td>`;
+    html+=`<td style="font-size:11px;">${fmtDelta(entry.deltaTotalTime)}</td>`;
+    html+=`<td style="font-size:11px;">${fmtDelta(entry.deltaContentReady)}</td>`;
+    tr.innerHTML=html;
+    tr.addEventListener('click',()=>toggleCmpDetail(entry,tr));
+    tbody.appendChild(tr);
+  });
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function toggleCmpDetail(entry,tr){
+  const ex=document.getElementById('cmp-det-active');
+  if(ex){ex.remove();document.querySelectorAll('#cmp-tbody tr.expanded').forEach(r=>r.classList.remove('expanded'));if(cmpExpandedRow===entry.name){cmpExpandedRow=null;return}}
+  cmpExpandedRow=entry.name;tr.classList.add('expanded');
+  const dtr=document.createElement('tr');dtr.id='cmp-det-active';dtr.className='detail-row';
+  const colCount=6+cmpRuns.length;
+  const cols=entry.perRun.map((tc,i)=>{
+    const label=cmpRuns[i].label;
+    if(!tc)return`<div><div class="dt-title">${label}</div><div style="font-size:11px;color:var(--text-3);">Not present in this run</div></div>`;
+    const errs=tc.allErrors.map(e=>`<div class="err-box">[${e.op}] ${String(e.msg).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`).join('');
+    return`<div>
+      <div class="dt-title">${label} ${statusBadgeForTc(tc)}</div>
+      <div class="pills" style="margin:.4rem 0;">
+        <span class="pill">${tc.numSegs} segs</span>
+        ${tc.contentReadyTime!=null?`<span class="pill">content ready: ${fmt(tc.contentReadyTime)}</span>`:''}
+        ${tc.totalTime!=null?`<span class="pill">E2E: ${fmt(tc.totalTime)}</span>`:''}
+      </div>
+      ${errs}
+    </div>`;
+  }).join('');
+  const ann=cmpAnnotations[entry.name]||{};
+  const annBlock=`<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border);">
+    <div class="dt-title">Review notes <span style="font-weight:400;text-transform:none;color:var(--text-3);">— for pointing reviewers at specific contents; saved with the exported snapshot</span></div>
+    <textarea class="cmp-note-textarea" placeholder="e.g. scraped song lyrics, no sentence-ending punctuation — input-quality issue, not backend" style="width:100%;min-height:52px;margin-top:.4rem;font-size:12px;font-family:var(--font);padding:.5rem .6rem;border:1px solid var(--border-md);border-radius:6px;background:var(--surface);color:var(--text);resize:vertical;">${ann.note?escHtml(ann.note):''}</textarea>
+    <input class="cmp-logfire-input" type="url" placeholder="Logfire log link (optional)" value="${ann.logfireLink?escHtml(ann.logfireLink):''}" style="width:100%;margin-top:.4rem;font-size:12px;padding:.4rem .6rem;border:1px solid var(--border-md);border-radius:6px;background:var(--surface);color:var(--text);font-family:var(--mono);">
+    <div class="cmp-logfire-open" style="margin-top:.35rem;">${ann.logfireLink?`<a href="${escHtml(ann.logfireLink)}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--blue);">↗ Open Logfire link</a>`:''}</div>
+  </div>`;
+  dtr.innerHTML=`<td colspan="${colCount}"><div class="detail-inner"><div style="display:grid;grid-template-columns:repeat(${cmpRuns.length},1fr);gap:1rem;">${cols}</div>${annBlock}</div></td>`;
+  tr.after(dtr);
+
+  const noteEl=dtr.querySelector('.cmp-note-textarea');
+  const linkEl=dtr.querySelector('.cmp-logfire-input');
+  const openEl=dtr.querySelector('.cmp-logfire-open');
+  const saveAnn=()=>{
+    const note=noteEl.value.trim(),link=linkEl.value.trim();
+    if(note||link)cmpAnnotations[entry.name]={note,logfireLink:link};
+    else delete cmpAnnotations[entry.name];
+    openEl.innerHTML=link?`<a href="${escHtml(link)}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--blue);">↗ Open Logfire link</a>`:'';
+    const nameCell=tr.querySelector('td:first-child');
+    const hasAnn=!!(note||link);
+    nameCell.innerHTML=(hasAnn?'<span title="Has review notes" style="margin-right:4px;">📝</span>':'')+entry.name;
+  };
+  noteEl.addEventListener('blur',saveAnn);
+  linkEl.addEventListener('blur',saveAnn);
+}
+
+// restore from baked-in snapshot (exported HTML files have __SNAPSHOT__ or
+// __COMPARE_SNAPSHOT__ injected — check compare first, the two are mutually exclusive)
 window.addEventListener('DOMContentLoaded',()=>{
+  if(window.__COMPARE_SNAPSHOT__){
+    try{
+      cmpRuns=window.__COMPARE_SNAPSHOT__.runs;
+      cmpDatesResolved=window.__COMPARE_SNAPSHOT__.datesResolved!==false;
+      cmpAnnotations=window.__COMPARE_SNAPSHOT__.annotations||{};
+      cmpRows=buildComparison(cmpRuns);
+      renderCompareDashboard();
+      document.getElementById('cmp-share-btn').style.display='none';
+      return;
+    }catch(e){console.warn('Compare snapshot restore failed:',e)}
+  }
   if(window.__SNAPSHOT__){
     try{
       const {filename,meta,results}=window.__SNAPSHOT__;
@@ -583,7 +1249,10 @@ function loadResults(results,filename,metaLabel){
 }
 
 // ══ parse ══
-function parse(txt,fname){
+// Pure: scans txt for testcase JSON blobs, builds records, applies slow-processing
+// classification. No global state or DOM touched — reused by both single-run parse()
+// and compare-mode file loading.
+function parseRunResults(txt){
   const res=[];let i=0,n=txt.length;
   while(i<n){
     if(txt[i]==='{'){
@@ -594,8 +1263,13 @@ function parse(txt,fname){
       if(!ok)i++;
     }else i++;
   }
+  markSlowProcessing(res);
+  return res;
+}
+
+function parse(txt,fname){
+  const res=parseRunResults(txt);
   allR=res;
-  markSlowProcessing(allR);
   const gm=avg(res.flatMap(x=>x.segTimes));
   allSegs=[];
   for(const tc of res)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null,tcHasError:tc.hasError,tcIsSlow:tc.isSlow,tcErrType:tc.errType,tcStatus:tc.isSlow?'slow':tc.hasError?'error':'pass'}));
@@ -1179,13 +1853,15 @@ function renderFailures(r){
       <div class="bar-val"><strong>${p.val}</strong> <span style="color:var(--text-3);font-size:10px;">${fp(p.pct)}</span></div>
     </div>`).join('');
 
-  // lang pair — short labels (strip locale suffix)
+  // lang pair — short labels (strip locale suffix). Shows ALL pairs (not just top N)
+  // so "why isn't pair X showing" never comes up — the card scrolls instead of capping.
   destroyC('pair');
   const pm={};for(const x of r){if(!pm[x.pair])pm[x.pair]={t:0,e:0};pm[x.pair].t++;if(x.hasError)pm[x.pair].e++}
-  const ps=Object.entries(pm).sort((a,b)=>b[1].t-a[1].t).slice(0,10);
+  const ps=Object.entries(pm).sort((a,b)=>b[1].t-a[1].t);
   const pr=ps.map(([,v])=>v.t?+(v.e/v.t*100).toFixed(1):0);
   // Short labels: en-US→it-IT → en→it
   const shortLabels=ps.map(([p])=>p.replace(/-[A-Z]{2}/g,'').replace('→','→'));
+  document.getElementById('pairChartInner').style.height=Math.max(160,ps.length*24)+'px';
   charts['pair']=new Chart(document.getElementById('pairChart'),{type:'bar',data:{labels:shortLabels,datasets:[{data:pr,backgroundColor:pr.map(v=>v>15?'#E24B4A':v>5?'#EF9F27':'#639922'),borderRadius:3,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const[pair,v]=ps[ctx.dataIndex];return`${pair}: ${ctx.raw}% err rate (${v.e}/${v.t})`}}}},scales:{x:{max:100,ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'rgba(128,128,128,0.07)'}},y:{ticks:{font:{size:10}}}},onClick:(evt,els)=>{
     if(!els.length)return;
     const[pair,v]=ps[els[0].index];
