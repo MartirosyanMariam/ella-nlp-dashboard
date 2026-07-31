@@ -222,6 +222,8 @@ window.addEventListener('scroll',()=>{
   .b-cont{background:var(--blue-bg);color:var(--blue)}
   .b-slow{background:var(--blue-bg);color:var(--blue)}
   .b-absent{background:var(--surface2);color:var(--text-3);border:1px dashed var(--border-md)}
+  .b-quality-clean{background:var(--surface2);color:var(--text-3);border:1px solid var(--border-md)}
+  .b-quality-flag{background:var(--amber-bg);color:var(--amber)}
 
   /* compare-mode classification badges */
   .b-cls-regress{background:var(--red-bg);color:var(--red)}
@@ -468,6 +470,7 @@ window.addEventListener('scroll',()=>{
       <select id="f-cefr"><option value="">All CEFR</option></select>
       <select id="f-errtype"><option value="">All error types</option></select>
       <select id="f-segs"><option value="">All seg counts</option></select>
+      <select id="f-quality"><option value="">All content quality</option></select>
       <input type="text" id="f-search" placeholder="Search name…">
       <span class="f-count" id="tc-count"></span>
     </div>
@@ -478,6 +481,7 @@ window.addEventListener('scroll',()=>{
           <th data-col="name">Name <span class="si">↕</span></th>
           <th data-col="pair">Pair <span class="si">↕</span></th>
           <th data-col="cefr">CEFR <span class="si">↕</span></th>
+          <th data-col="contentLabel" data-tip="Content quality label from test_suite_content_labels.csv — flags known issues in the source content itself (dirty punctuation, transcripts, artifacts, etc.), independent of pipeline errors.">Content <span class="si">↕</span></th>
           <th data-col="numSegs" data-tip="Segment invocations produced.">Segs <span class="si">↕</span></th>
           <th data-col="contentReadyTime" data-tip="Content step + Seg 0 — first moment user sees output.">Content ready <span class="si">↕</span></th>
           <th data-col="totalTime" data-tip="Full end-to-end wall time.">Total E2E <span class="si">↕</span></th>
@@ -608,6 +612,7 @@ window.addEventListener('scroll',()=>{
       <select id="cf-errtype"><option value="">All error types</option></select>
       <select id="cf-pair"><option value="">All pairs</option></select>
       <select id="cf-cefr"><option value="">All CEFR</option></select>
+      <select id="cf-quality"><option value="">All content quality</option></select>
       <select id="cf-exclude-lang"><option value="">Exclude language…</option></select>
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2);cursor:pointer;">
         <input type="checkbox" id="cf-annotated-only" style="cursor:pointer;"> 📝 Only annotated
@@ -714,6 +719,234 @@ function moveTip(e){tt.style.left='0';tt.style.top='0';const w=tt.offsetWidth,h=
 // ══ state ══
 let allR=[],allSegs=[],charts={};
 let scTc='_sortKey',sdTc=1,scSg='time',sdSg=-1,expandedRow=null;
+
+// ══ content quality labels (test_suite_content_labels.csv) ══
+const CONTENT_LABELS={
+"02cfe9d9-f521-486b-92fb-8bb662aee9b3":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Doctor Klein: Good morning, Cecilia, how are you feeling today? Cecili...\""},
+"09c3fafe-96c4-4758-b6c8-a9c9780f776e.3":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Che si tratti di analizzare le vulnerabilità della catena di approvvig...\""},
+"0b7018db-98ef-42d3-85e5-7ad04200907b":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"As companies like Nvidia and SoftBank focus on industrial robotics as ...\""},
+"0bf5c29f-544e-4730-9e98-31384801bb04":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"How's it going? How are you and the family doing? We are in Israel for...\""},
+"0cee68b1-4ecc-4c79-bffb-85b054aed5d3":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"12 rules for life: \"Life is a journey with its fair share of chaos and...\""},
+"0cf68d9c-8932-415d-8976-410ff61469a4":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"I bought a book at the bookstore yesterday. It was very interesting. I...\""},
+"1aa510f6-58ae-49f0-a283-3057e0ce64de":{"l": "Invisible character + irregular punctuation", "d": "Contains 4 invisible WORD JOINER characters (likely a rich-text copy-paste artifact) and three non-standard double-periods ('..' instead of '.' or '...'); asterisks used as inline bullet markers within running prose."},
+"1b1a0ae9-fde6-430e-8657-8fece97d3756":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"A blockchain is a distributed data structure. The data structure is of...\""},
+"1c90f010-4e55-4a93-aa7e-8115d0808912":{"l": "Missing terminal punctuation", "d": "Text ends without sentence-final punctuation ('...en senior fall rolls around. / Best,silvia')."},
+"1cb1087a-8965-41fd-adf3-f6ea50034416":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Cosa fare appena svegli la mattina per iniziare la giornata con grinta...\""},
+"1dce7b6b-126d-421f-8a25-452f502a2026":{"l": "Citation bracket artifact", "d": "Shares its opening sentence with symbol_num_punct_test; contains a bracketed academic citation [5, 33] embedded mid-sentence. Otherwise clean punctuation."},
+"2b1b6759-eb35-48e3-b0a3-12f949f84da6":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Although heart disease is the leading cause of death in the United Sta...\""},
+"2d9d9207-a1a1-410f-bc96-dce11edb7e04":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"English texts for beginners to practice reading and comprehension onli...\""},
+"2e8b353a-d1c8-4188-96c6-d57a201b3a16":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"According to some of the latest statistics, employers are swamped by j...\""},
+"fr-from-unit.tests":{"l": "Missing space (split word)", "d": "French passage containing a word visibly split by a stray space ('va cances' for 'vacances') near the end."},
+"1dce7b6b-126d-421f-8a25-452f502a2141":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Aptos Keyless: One of the biggest challenges is the expectation of use...\""},
+"1f9936aa-d17a-42f4-a8ed-0ed9922ca506":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Events are used to handle user interactions like clicks, form submissi...\""},
+"2acf8cf6-09ca-4e6e-bcfc-bc254a5cf44e":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Habits are the small choices and actions that people make every day. T...\""},
+"2af92a04-ba62-431f-9288-25b83b7d62de":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Every Sunday, NPR host Will Shortz, The New York Times’ crossword puzz...\""},
+"2ffbe409-5ebc-47ec-8de9-0b4619db35e9":{"l": "Irregular spacing", "d": "One double-space typo ('vision-language-action  models'); otherwise clean."},
+"3a8783f5-cd11-4471-9365-c5b0e60538b1":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Ella’s approach to learning is based on two core foundational principl...\""},
+"3b79da38-0ef3-4921-95f0-40778d0b3f45":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Amazon introduced Prime Video. In February two eleven, we saw Amazon d...\""},
+"3cd708c0-7820-4dcc-9ee7-c230bc9593a9":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Cosa fare appena svegli la mattina per iniziare la giornata con grinta...\""},
+"3d3a73a3-2d6b-40bb-826a-a37894bd54e8":{"l": "Backtick used as quote mark", "d": "Backtick character (`) substitutes for proper quotation marks around every quoted statement (17 instances) in a Spanish interview article — a likely encoding/extraction artifact."},
+"3f312f87-2894-4d0e-8b6f-d61a1ac4568d":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Larry David: My Dinner With Adolf By Larry David Mr. David is a comedi...\""},
+"3f56e069-7fbf-42e8-a109-5b5ef83ac79b":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Here's Brad Fuller, producer on the Jack Ryan series. He's talking to ...\""},
+"4ba0f66c-e47d-48ba-a9f7-4e9f00a36979":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Even among other CEOs, Jeff Bezos has known for being an especially ag...\""},
+"72da247d-1758-48d0-93b6-60944478a892":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Il était activement recherché. Sa cavale s'est arrêtée hier vers 23h. ...\""},
+"74b4dd0e-08e8-4e6b-9b21-2d55b401c575":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"At dusk, Emberclaw the dragon soared above the silent valley. Scales s...\""},
+"77c258dd-fd24-4aae-948e-cdc1d88d3691":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"In July 2020, in the midst of the raging COVID-19 pandemic, the CEOs o...\""},
+"79b2e4b0-0f4b-44b0-9853-5c47af431b16":{"l": "Unpunctuated podcast transcript", "d": "All-lowercase, unpunctuated ASR-style podcast outro; appears to mishear 'Wondery' (the podcast network) as 'wondering'. Ends without terminal punctuation."},
+"79e41d24-a5a9-4342-a7f0-1afee93824f8":{"l": "Unpunctuated raw transcript", "d": "Very long (155.9k chars), all-lowercase, run-on ASR-style transcript with no sentence punctuation throughout; embeds inline timestamps (e.g. 0:06, 2:31:36) and ends mid-timestamp."},
+"7bb459c6-c1e2-4fcf-b044-47be9249f971":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"In our modern world, there are many factors that place the wellbeing o...\""},
+"7be525eb-fd70-4acd-b29e-bd698e04ab93":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"In the realm of Veridion, beneath skies painted with emerald stars, li...\""},
+"7d68ca6b-2ed3-4e6d-93db-9f787dcaadf2":{"l": "Song lyrics (no terminal punctuation)", "d": "Spanish song lyrics with line breaks in place of sentence punctuation; ends without a terminal mark, as is typical for lyrics."},
+"082e0f33-4417-4bde-9762-ba25e483bb3f":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Article 3: Alpha Testers Start Here: Your Ella Walkthrough + Pro Tips ...\""},
+"0896e65f-f7c8-47d7-8a1a-da5be50a86af":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"As a clumsy child, my mom would repeatedly tell me to be aware of my s...\""},
+"097f505f-dd92-45c1-b7b0-398e6ddae714":{"l": "Possible dropped word after ellipsis", "d": "TechCrunch legal-news article; one spot reads '...committed to safety and transparency …  fast becoming...' — double space after the ellipsis suggests a word may have been dropped alongside the elision."},
+"1079c4d7-a503-4e88-9eba-c13f799235ea":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"A Christian holiday signifying the birth of Jesus, Christmas is widely...\""},
+"1297b3db-bde1-4e76-8291-2d02d5298cf2":{"l": "Irregular spacing", "d": "One double-space typo ('networking advancements,  and'); otherwise clean."},
+"1346c96b-1662-41f7-b029-8733fdba86f8":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Even among other CEOs, Jeff Bezos has known for being an especially ag...\""},
+"1464e035-7294-43b4-914f-f37d945b9c02":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"2A Traduzione Podcast: Nike vs Adidas È febbraio 2015. All'incrocio tr...\""},
+"240fa472-95d1-4d76-99c1-f19ef8ccf89a":{"l": "Missing terminal punctuation", "d": "Text ends without sentence-final punctuation ('...ody liked to disagree with Dudley’s gang')."},
+"272f580c-40f0-4e49-b2d9-30180979cb1a":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Central Business District Tolling Program (CBDTP) begins January 5, 20...\""},
+"372b6246-86ff-4ac6-bd53-4b3450ec41b7":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"hy is it worth thinking about your business as a brand? Isn’t branding...\""},
+"649cac91-9f4a-4957-afeb-beb73eee2d3d":{"l": "ALL-CAPS transcript with speaker markers", "d": "All-caps closed-caption-style news transcript using '>>' 8 times to mark speaker changes; no lowercase letters anywhere."},
+"665f97bf-5c5d-4cac-a1e6-79662545af5c":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Achieving Your Learning Goals with Ella By now, you’ve learned how to ...\""},
+"721e5c0d-1c69-44e9-a544-cc7df5ed5135":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"In the heart of a shadowed forest, where even sunlight dared not penet...\""},
+"758dffbd-e8c8-4a35-9520-10deae58ae7a":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Below is a complete Python example that demonstrates how you might bui...\""},
+"861c3417-dead-42e7-a70f-a4d1191c2cbe":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Deep beneath the neon-lit streets of Neo Shanghai, Dr. Elena Zhao tend...\""},
+"866a5029-4996-48db-a75e-735dc0d76043":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"AI models are being cranked out at a dizzying pace, by everyone from B...\""},
+"88da5af4-651d-417d-bd9f-824283cc636b":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"article 2: Alpha Testers Start Here: Your Ella Walkthrough + Pro Tips ...\""},
+"896b01af-7018-4ef1-b43a-9a47d6dd9de6":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"In a small seaside town bathed in the golden glow of sunset, there liv...\""},
+"917deb2d-d136-4d56-a500-1585d54e0643":{"l": "Unpunctuated podcast transcript", "d": "All-lowercase ASR-style podcast outro; same 'Wondery'→'wondering' mishearing, here as 'for wondering you'. Ends without terminal punctuation."},
+"918fddb0-623b-4182-9c81-491081a9fbeb":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"However, if this sounds impersonal, it’s far from that, especially giv...\""},
+"931d41ac-a237-484e-a438-2121d7fb2b19":{"l": "Transcription-tool watermark", "d": "Ends with a literal tool-attribution string, 'Generated with https://kome.ai', leaked into the transcript content; no terminal punctuation."},
+"94a4849c-e10d-4f71-baf2-3aa69fe4dee1":{"l": "Irregular spacing", "d": "Personal message with two double/triple-space typos ('Ben   arrive', 'the  whole family') and no terminal punctuation at the end."},
+"95a06fe9-e96c-45ac-b1c0-139908d9a8d8":{"l": "Song lyrics (no terminal punctuation)", "d": "Spanish song lyrics ending mid-refrain with no terminal punctuation."},
+"95c4ce63-0467-4c1b-a274-408d67f41055":{"l": "Missing terminal punctuation", "d": "Text ends without sentence-final punctuation ('...althy and always go for the win! / - Peter')."},
+"96d6cc85-6b3b-4cfd-b2dc-15ff59568528":{"l": "Unpunctuated podcast transcript", "d": "All-lowercase ASR-style podcast outro crediting producers; ends without terminal punctuation."},
+"0062736b-0206-4d11-aea2-814410b79e47":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"First, I wake up. Then, I get dressed. I walk to school. I do not ride...\""},
+"02666aac-f7a4-4a5e-b2ca-50c325c437ec":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"It can be challenging for developers of fintech apps to integrate repa...\""},
+"177125ba-5b80-4fc1-8acc-8265f5f6f0a8":{"l": "Markdown syntax artifact", "d": "Contains markdown emphasis underscores around single words (_audio_) that were never rendered or stripped."},
+"191947d8-ae09-4387-a265-f432958ebf22":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"C'est ma vie Je m'appelle Angélica Summer, j'ai 12 ans et je suis cana...\""},
+"2056aae0-0be0-42ed-8b90-eae8d78acc6d":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"I’m personally very excited about this time of year, the lead up to wi...\""},
+"2513f67b-5883-494d-8fcd-3e7d85ce59fc":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Companies that want to build AI voice into their products are rushing ...\""},
+"2725a9a8-7d4e-47d0-8c42-fe9b66341eef":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Book summary: Sapiens. A Brief History of Humankind by Yuval Noah Hara...\""},
+"2834a848-7789-4882-87ec-95fca5942864":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Learning a new language does more than add words to your brain — it re...\""},
+"36418c42-f73b-4bfe-bb8e-96734d2c9dd9":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Die alte Mühle am Schwarzbach erzählte ihre Geschichte durch jedes kna...\""},
+"3709eed6-bc2c-41b4-b95f-63e0f1e3a8de":{"l": "Unpunctuated raw transcript", "d": "All-lowercase, run-on ASR-style excerpt (shares its source with c98ace63 and d901b386, a longer/shorter cut of the same transcript); no terminal punctuation."},
+"37424da4-2e15-456f-a615-3f3cda8389de":{"l": "Truncated content", "d": "Cuts off right before a promised code example ('...consider this code') that never appears."},
+"4187011f-ede5-46d6-9f9e-8c2323e11773":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Hi! Nice to meet you! My name is John Smith. I am 19 and a student in ...\""},
+"48133b64-9568-404f-875a-ce87bd09fd0d":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"In the quaint town of Millbrook Falls, where the local diner served qu...\""},
+"5407a651-1183-4111-aa44-1c7d786d4d73":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"In the heart of the ancient forest of Eldara, where sunlight danced th...\""},
+"549338b7-a866-4ae1-8163-5c4a83c9d16f":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"After months of putting it off, I finally got around to cleaning out t...\""},
+"6576de84-94f1-4336-b858-41de74964dc0":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Larry David 01: Last Wednesday night I received an email out of the bl...\""},
+"6756b2b8-2107-491f-9d07-a70afe542bd0":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"François Chollet, an influential AI researcher, is launching a new sta...\""},
+"74905e9f-ddee-4313-8f4d-341d6fceaafc":{"l": "Missing terminal punctuation", "d": "Text ends without sentence-final punctuation ('...k to that list will be in the show notes')."},
+"76736b7b-378f-4251-aaed-bc4c600f757f":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"I think a pattern that helps avoid things like this is grouping associ...\""},
+"81517d9a-d14e-4b85-8cca-b576c5fc3146":{"l": "Transcription-tool watermark", "d": "Ends with the same leaked attribution, 'Generated with https://kome.ai'; no terminal punctuation."},
+"8190c893-3fdd-4d97-8359-e4bb539c885c":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Le Chat will be able to query AFP’s entire archive dating back to 1983...\""},
+"83669a15-1bce-4e43-bd8d-854ff63c6e9e":{"l": "Technical diagram notation", "d": "Describes a software data-flow using inline arrow notation ('Action → Dispatch → Reducer → Store → React Components') rather than prose — awkward to read aloud as-is."},
+"9204da03-b4c3-4943-916d-234f2f904cdc":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Humane, formerly one of Silicon Valley’s buzziest AI hardware startups...\""},
+"93992dc0-1a1d-4ae0-a2c3-d8112cd4ec75":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Der technologische Fortschritt des 21. Jahrhunderts hat unsere Gesells...\""},
+"9553ccd2-f344-455d-9fe3-e413aeceae69":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Are you a sharp-minded linguist with experience in NLP libraries like ...\""},
+"b2398945-f8fc-4459-933d-ef57bcdc44a0":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"After fielding user backlash over its new Terms of Use last week, Fire...\""},
+"b9977a25-655c-4862-8551-685f8cffa3f7":{"l": "Invisible character", "d": "Contains 8 invisible SOFT HYPHEN characters scattered through the text — a common artifact of copy-pasting from justified/hyphenated web or PDF text; otherwise clean."},
+"bc55c0a0-cb7a-4590-8eed-07e47c74cba7":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Alpha Testers Start Here: Your Ella Walkthrough + Pro Tips Welcome to ...\""},
+"be6be60b-1f4b-4595-9f5b-18182acb05b7":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"It was 7 minutes after midnight. The dog was lying on the grass in the...\""},
+"c0c39211-536a-4cb2-9ad3-b9e7fedf6dab":{"l": "Missing terminal punctuation", "d": "Text ends without sentence-final punctuation ('...z positif et pensez que tout ira bien. / »')."},
+"c1d40f48-144a-43bd-be92-97a98b4c99a8":{"l": "Song lyrics (no terminal punctuation)", "d": "Spanish song lyrics with ad-libs in parentheses ('(yeah)'); ends without terminal punctuation."},
+"c262fbe2-f354-444f-b5f8-faadea4f6e48":{"l": "Truncated content", "d": "Extremely long (165.5k chars) business-book excerpt that cuts off mid-new-sentence ('...writes a new test case.\\nThe test'); also uses real minus/multiplication signs (−, ×) and black-circle bullets (●) as list markers throughout."},
+"c330b4be-f23c-4710-b8d3-cb29dfb29f64":{"l": "Markdown syntax artifact", "d": "Ends with a properly-punctuated question wrapped in stray markdown bold markers ('**...Messi ?**'); punctuation itself is correct, just wrapped in leftover formatting syntax."},
+"c3689892-524a-47fc-b546-1ea385695b13":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"In this day and age, the world can’t live without mobile and web appli...\""},
+"c4f5992a-99ac-4730-848d-627efb394ad6":{"l": "Irregular spacing", "d": "One double-space typo ('interactable and  do stuff'); otherwise clean."},
+"c697d8d7-a1ef-4154-a1a8-6da03f9d3cb1":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"According to some of the latest statistics, employers are swamped by j...\""},
+"c841a11f-f573-441b-b7e9-681152c0b706":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Given Generative AI is very good at interpreting dense texts, it’s bee...\""},
+"c962b111-6190-4566-a68d-8d2574656f75":{"l": "Rare spacing character", "d": "Song lyrics (Genius-style) using FOUR-PER-EM SPACE characters between some words instead of a normal space; also ends without terminal punctuation, typical of lyrics."},
+"c97ca8db-8afc-4910-a54a-8ac7e5cebdeb":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"1/19/2025 Even among other CEOs, Jeff Bezos has known for being an esp...\""},
+"c98ace63-6c7e-4b5f-be79-babbe7318227":{"l": "Unpunctuated raw transcript", "d": "All-lowercase, run-on ASR-style excerpt, a longer cut of the same source transcript as 3709eed6; no terminal punctuation."},
+"cd5d5572-f2bc-454d-b71a-f2cf8a08297e":{"l": "Missing terminal punctuation", "d": "Text ends without sentence-final punctuation ('... / “How did you know it was me?” she asked')."},
+"cdb54d6e-0166-44a9-8079-f111ba771313":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"I musei, a Tokyo. Viaggio a Tokyo di Matteo Brodone e Flavio Parisi. M...\""},
+"cf19a404-52b8-4993-9e25-cf6ab6734fc5":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"A significant surge in tourists entering China during the first half o...\""},
+"cfaa2cda-07bf-44b3-bb80-782c42c1e219":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Cosa fare appena svegli la mattina per iniziare la giornata con grinta...\""},
+"coffeewars_1_A1_en_it":{"l": "Production/stage-direction markers", "d": "Podcast-transcript formatting with bracketed [Music] cues marking audio transitions; sentence punctuation itself is clean."},
+"d0dd0572-01e1-4f14-b64d-a97665459e08":{"l": "Rare symbol present", "d": "Contains uncommon characters: '•'x9, '#'x1."},
+"d166d81e-d883-417f-88e8-8e10881466a6":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Como a IA generativa para arquitetura está transformando o design A IA...\""},
+"d4c7d3e9-30e8-49c2-9814-aa5a3ea0abe4":{"l": "Rare symbol present", "d": "Contains uncommon characters: '#'x1."},
+"d5d83442-2d3c-4ab8-a922-987d1dee42eb":{"l": "Rare typographic symbol", "d": "Uses a THREE-EM DASH (⸻) as a section-break marker mid-text; otherwise standard punctuation."},
+"d7d16923-4888-49dd-b47d-39a77cee9fbc":{"l": "Markdown syntax artifact", "d": "Contains markdown bold markers around headings ('**Achieving Your Learning Goals with Ella**', '**creating a habit**') that were never rendered or stripped."},
+"d8b8fc0b-1e65-40be-b9b3-2b8b8ff93420":{"l": "Emoji present", "d": "Pool-care guide that opens and closes with an emoji sequence (swimmer+male-sign+beach+splash); numbered/bulleted care steps are flattened into running prose, reading choppy."},
+"d901b386-5833-456c-b1b8-ad56df2c6e66":{"l": "Truncated content", "d": "Same source transcript as 3709eed6/c98ace63, but this excerpt is cut off mid-word ('...this new technology coul')."},
+"da742ba6-8cfa-4d3b-b858-677895e03d5c":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Intro You probably see them in your neighborhoods, those grayish blue ...\""},
+"dabd6c79-90ba-4a20-acfe-984169727105":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"I live in a house near the mountains. I have two brothers and one sist...\""},
+"dcb24897-36e9-4b07-9547-9885618a0a66":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"First introduced in 2014, Material Design is Google’s open source desi...\""},
+"df29e809-7b0f-4eae-a2e1-4e7f35bdc5c3":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"EAS Build will Default to M1/M2 for iOS Builds At the beginning of thi...\""},
+"e19edb55-1504-4813-99cf-5053f1c0a728":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"It’s been a couple of years since our last topic-focused, one-day even...\""},
+"e3f5d530-9969-4507-afe1-ebdb873cf11f":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Keith recently came back from a trip to Chicago, Illinois. This midwes...\""},
+"e4b5085a-b1c8-45a0-b393-867a02ecc8c8":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Formerly a cofounder at Synthesia, the realistic AI avatar startup val...\""},
+"e5fc5b2c-8603-4ad7-95ce-240ae328ecd0":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Amazon ECS is a highly scalable and flexible container orchestration s...\""},
+"e64d456e-2b60-4b2a-b912-53e4e078fb9a":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Jack was hungry. He walked to the kitchen. He got out some eggs. He to...\""},
+"015a18a8-d7d6-4f19-ae34-f21b1121954f":{"l": "Markdown syntax artifact", "d": "Contains markdown emphasis underscores (_negative_) plus unstripped bullet markers (•) from source formatting."},
+"027acfc8-2f8d-41d3-9374-79ea81315ddc":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"2. Le FC Barcelone de Flick marque énormément de buts… avant les vacan...\""},
+"07f6acd9-f365-40aa-a4f3-68adfacc1d0c":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Amazon part 3a - Even among other CEOs, Jeff Bezos has known for being...\""},
+"16a4e313-ed25-4916-b439-82c48e6d88c3":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Billy Evans, partner of Theranos founder Elizabeth Holmes, is working ...\""},
+"16b87f48-dcc8-4651-af29-5d4e25c368c5":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Le langage humain est plus ancien qu’on ne le pensait: une découverte ...\""},
+"20f307a8-4ccb-4a8d-bb96-e45e5eb36e8d":{"l": "Missing space between words", "d": "Spanish/urban-slang song lyrics; also has a genuine missing-space typo ('Mauro AvilaWTF' — two words/names run together) and ends without terminal punctuation."},
+"24d4e344-1d28-4d20-884d-fe0a98254340":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"ChatGPT — это диалоговый искусственный интеллект, разработанный компан...\""},
+"24ead06d-adf5-43ea-b25a-4bd6f2c7c166":{"l": "Song lyrics (no terminal punctuation)", "d": "Spanish song lyrics; ends without terminal punctuation."},
+"25be52f2-14b2-4afc-b0a6-0058d23fa55a":{"l": "Truncated content", "d": "Text is cut off mid-clause ('...Full Nature Farms in 2019.\\nBefore'), ending abruptly with an incomplete sentence."},
+"25d1c285-c054-407a-b469-963378c7ba75":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"10 Small Things Neurologists Wish You’d Do for Your Brain Easy everyda...\""},
+"25fb08a2-16c1-4049-853d-91f5e9cf5c87":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Dear Ziv, Thank you for your follow-up regarding how we can proceed af...\""},
+"29cc652e-dd03-4226-b842-28905b5de0cc":{"l": "Corrupted technical term", "d": "The cryptography term 'secp256k1' is rendered as 'secp256k¹¹⁰' — the digit is replaced by three superscript characters, a likely encoding corruption."},
+"32b39cd0-ca5f-4d35-8574-5c2584086fd9":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Le FC Barcelone de Flick marque beaucoup de buts très vite ! L’équipe ...\""},
+"42acdb5e-e271-417f-b6fd-1a6d6b2eb13a":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"I wanted to send an email update to you let you know how things have b...\""},
+"44c85eec-86ff-49f8-864c-dd3144ead094":{"l": "Unfilled template placeholder", "d": "TechCrunch-style article with a dropped-word gap ('an evolution from  to the cloud'), likely 'on-premise' or similar omitted."},
+"50ba603c-21f2-4837-a1e2-cad68c0ce28b":{"l": "Mid-word punctuation corruption", "d": "YouTube-transcript style piece with a word split by a stray period ('natural or.der' = 'order'), a corrupted quote mark mid-contraction ('I\"'m'), and one dropped-word gap ('teaching of the language  creates')."},
+"52cab83a-2433-48c8-9c1b-b1fd15a85f46":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"È uscita la quarta puntata di Viaggio a Tokyo: il podcast del Post in ...\""},
+"57de7be7-28fd-4862-a5ee-aeaf54adc6d4":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Brigid O’Brien has seen her share of pitches from founders, and she ha...\""},
+"63a02523-a857-44c0-b406-f319fe57e4eb":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Click here to return to Amazon Web Services homepage What is Cloud Com...\""},
+"7d419fba-7524-49f3-8ad0-190d9e5859eb":{"l": "Unfilled template placeholder", "d": "TechCrunch-style article with two apparent dropped-word gaps ('a market of people  who will just choose...', '\" can be that teacher that inspires...\"')."},
+"7d700f1b-048d-4e14-aac5-695049678955":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Dust swirled through the late afternoon sun as Colt Brennan rode into ...\""},
+"7eaff2b1-e84d-4b93-9746-8705a92556b3":{"l": "Markdown syntax artifact", "d": "Contains markdown bold markers around a book title ('**\"Thinking, Fast and Slow\"**') that were never rendered or stripped."},
+"7ef16ac6-0cde-4abe-b311-e2cf89b737ff":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"D'où viennent les poissons d'avril et les six bonnes blagues qui vont ...\""},
+"7fb81517-8e13-4eea-94a1-28fb74f08a5e":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Humans have existed on Earth for a very long time, but the species kno...\""},
+"7fe10771-f12d-429e-a06c-75f9cbb3fac9":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"From a struggling family tea estate to an innovative climate venture, ...\""},
+"8a2c4a41-45cc-4b82-bad9-4efbd9a87ef0":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Days of the week There are seven days of the week, or uniquely named 2...\""},
+"8d75cd93-e215-4053-942e-97445557942b":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"A onetime accordion player, stilt walker, and fire-eater, Guy Lalibert...\""},
+"8d930c56-6a5a-47bd-b4d0-97866c7ff241":{"l": "Missing terminal punctuation", "d": "Casual/colloquial Arabic text ending without terminal punctuation; also contains 4 double-space irregularities."},
+"9aa7c1b8-5ecb-413f-bc96-9df03246f189":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"3 Je m’appelle Jessica Je m’appelle Jessica. Je suis une fille, je sui...\""},
+"9c2d9daf-0134-4a71-9181-bea76a63f280":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"\"In the 21st century, we are faced with a multitude of challenges and ...\""},
+"9e3709e6-2afa-4001-8e40-ae6bfe232a85":{"l": "Missing terminal punctuation", "d": "Text ends without sentence-final punctuation ('... breakthrough until attention came along')."},
+"9f3773ea-450c-4451-9436-1a055f0f475b":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"In the heart of the ancient realm of Eldoria, where towering crystal s...\""},
+"06fb7182-7c87-46b4-bed7-fbddd709d91c":{"l": "Unpunctuated podcast transcript", "d": "All-lowercase ASR-style podcast outro crediting producers; ends without terminal punctuation."},
+"4c19a388-2d31-4fac-8ef5-46fc936d2b7c":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Despite what some experts have characterized as an environment increas...\""},
+"4c269c0d-62b1-464d-82ec-9a8409ab934a":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Keith recently came back from a trip to Chicago, Illinois. This midwes...\""},
+"4e569570-8b51-4e05-9f1d-b4ebbac94d1c":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Every Sunday, NPR host Will Shortz, The New York Times’ crossword puzz...\""},
+"4f63c3d4-4619-4370-bb13-ebb2bda277bf":{"l": "Rare symbol present", "d": "Contains uncommon characters: '_'x1, '●'x24, '#'x2."},
+"4f63d227-5c89-45ef-ac05-07919ef8a6eb":{"l": "Irregular repeated punctuation", "d": "Informal personal update containing an extended ellipsis ('....', 4 dots), a doubled exclamation ('!!'), and a tripled exclamation ('Happy 2025!!!')."},
+"5c80e212-563c-42a4-bf0f-40fde033967a":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"George is at the pet store, looking at what kind of pet he might want ...\""},
+"5d2aaab8-f947-47a9-a4cc-724e62a0aebb":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"It’s not uncommon for AI product designers to encounter challenges in ...\""},
+"5dabdc0c-5386-42bb-a5bc-6b4f1adc538a":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"In the highlands of Vareth, where the wind howled like wolves and the ...\""},
+"5e73ce3a-4f8b-4985-a397-65de7fd3e8e6":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"In June, Diane visited her friends who live in San Francisco, Californ...\""},
+"66a224bb-3710-4e4d-a65f-d792df77de22":{"l": "Truncated content", "d": "Cuts off right after a colon promising an example ('...split a string into an array:') that never follows; also has 8 unstripped bullet markers (•)."},
+"66a3e659-9841-49f1-bad9-0472794700b7":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Flux has four key components: Actions: Objects that contain informatio...\""},
+"6a00b9d4-550d-46f1-b3a3-9792c672588d":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"In the heart of the ancient forest, where sunlight barely pierced the ...\""},
+"6a309c80-daed-4145-8a3b-0177805105e3":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"JWT stands for JSON Web Token, an open standard for securely transmitt...\""},
+"6b550cc7-ab67-426e-b99c-b026146c55d2":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Alpha Testers Start Here: Your Ella Walkthrough Welcome to Ella! Thank...\""},
+"6be1f916-86d1-4d01-b240-33d809692566":{"l": "Song lyrics (no terminal punctuation)", "d": "Spanish song lyrics; ends without terminal punctuation."},
+"6c30e066-b54d-484c-b384-c8c102c98f89":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"A low rumble echoed across the dawn-lit plain as Lieutenant Mara Novak...\""},
+"6cc7b731-36ca-4f87-a196-ce4e0a066290":{"l": "Missing terminal punctuation", "d": "Text ends without sentence-final punctuation ('...rtup Box—it was quite an eye-opening 143')."},
+"6da51371-a78f-4757-9b01-4b0eb1e0cffb":{"l": "Unfilled template placeholder", "d": "Ella marketing-style script with broken mail-merge gaps — blank spaces where variables should have been substituted (e.g. 'affinity for .', 'content in  you could be  in  and it won't feel like work')."},
+"6f1a1b35-bc3c-41d1-b0ad-069d670cbd79":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"La pequeña plaza del pueblo de San Miguel de Allende cobraba vida cada...\""},
+"7a580229-2ff8-4fa8-b7ca-a797d20ec9c8":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Alpha Testers Start Here: Your Ella Walkthrough + Professional Tips fo...\""},
+"7a8c63e6-a7dc-4140-831b-aecfd86941d7":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Keith recently came back from a trip to Chicago, Illinois. This midwes...\""},
+"7b2c3149-5a63-401f-9966-d61816cd3b05":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Anthropic is releasing a new frontier AI model called Claude 3.7 Sonne...\""},
+"23959133-f1d9-428d-95ba-5140e277234c":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Designing for 2025 isn’t just about hopping on the latest trends — it’...\""},
+"61955199-8230-472f-8270-75b4435a6c55":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"A great summer vacation I just returned from the greatest summer vacat...\""},
+"7595277b-44cd-465c-9ab1-ada88617247d":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Doing laundry can be a chore. It takes time and is tedious. Few of us ...\""},
+"97039508-db2f-4ba7-9757-d45f85e5f6fb":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Let’s deep dive into Level 1 of React interview preparation. I will tr...\""},
+"a3d1664d-e242-4f23-8135-31c335d1a9ba":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Alex Dewez, a partner at 20VC, just released its highly anticipated St...\""},
+"a5437872-bcad-457d-bba0-5179ebe2b05c":{"l": "Missing terminal punctuation", "d": "Podcast-style outro ('...tell your friends see you next time') with no terminal punctuation and 3 double-space irregularities."},
+"a5b69900-9380-45d4-b82e-837a4368319a":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"It was 7 minutes after midnight. The dog was lying on the grass in the...\""},
+"a8e58964-4e0e-40a8-ab3d-67ec588fec1d":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Je m’appelle Jessica Je m’appelle Jessica. Je suis une fille, je suis ...\""},
+"a9f6e32f-b28f-4278-8b2c-114eac557a7b":{"l": "Transcription-tool watermark", "d": "Ends with the same leaked attribution, 'Generated with https://kome.ai'; no terminal punctuation."},
+"aa370392-cb8c-4266-9904-3c52be587346":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"\"A Walk in the Woods is a humorous and insightful exploration of the A...\""},
+"aaffcdc4-cae7-4b7a-93b9-d061625f37ec":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"A Chinese AI company named Stepfun has released an “open” AI model, St...\""},
+"abf68723-5ac3-44a0-98d3-766c54e4c049":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Anatomy of a Fundable Startup: Building a fundable startup requires mo...\""},
+"ac7bdfc3-336e-4a21-beec-89a9d3f15e6e":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Even among other CEOs, Jeff Bezos has known for being an especially ag...\""},
+"ad03ce1a-3c5f-44c1-bf95-804aea7ce565":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Achieving Your Learning Goals with Ella By now, you’ve learned how to ...\""},
+"aff3ece0-8202-4704-9174-2cec4d1e3858":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Kesha may have taken the dollar sign out of her name, but now, the sin...\""},
+"b10ceab5-50ac-4631-876e-f474d391bf44":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Can they assemble a cast to make this thing come to life? You know? An...\""},
+"b1f0c482-ec91-4a9f-b592-13f1788fa217":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Evening sun slowly sank below the prairie horizon, painting the sky in...\""},
+"b1f42de7-8f37-4234-be34-833ed36445e3":{"l": "Truncated content", "d": "French text cut off mid-word ('...J'aime beauco'), missing the final letters of 'beaucoup'."},
+"b27e873b-5b93-461e-b122-3dc48fea3786":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"2 Je m’appelle Jessica Je m’appelle Jessica. Je suis une fille, je sui...\""},
+"b298ca91-8dbd-49a1-ad00-10795c3d19b5":{"l": "Emoji present", "d": "Contains a single rocket emoji (🚀) plus one stray tilde (~); otherwise clean prose."},
+"b6b39041-4d10-48b1-8422-84f5ba900e24":{"l": "Document markup/reference artifacts", "d": "Dense textbook-extraction artifacts throughout: relative image paths (../_images/wake-word.svg), figure/table labels (Fig. 1.3.1, label:tab_intro_decade), and dozens of (Author et al., Year) citations embedded in running prose."},
+"Business_wars_ep_3":{"l": "Escaped-newline artifact", "d": "Literal backslash-n character pairs appear throughout (~312x) instead of real line breaks, alongside bracketed [Musica] production cues; would render as garbled text if not unescaped."},
+"e83c6014-11c8-4acf-88d7-ee53dc4a3c2b":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Gobur bowed his head and said, 'I am afraid of my father.' Dhaniya bur...\""},
+"e8867845-1915-4827-a38e-d93bed80e690":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"1/23/2025 I'm your host brad Stone. In this episode, we're going to te...\""},
+"ea4c876c-dc1e-49bc-8973-ceaf31d07755":{"l": "Rare symbol present", "d": "Contains uncommon characters: '•'x1."},
+"eb416a69-c83d-4975-b94d-a91378c86ffc":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Artificial intelligence is a field of science concerned with building ...\""},
+"eb615768-b364-4904-9688-4876b720f04e":{"l": "Emoji + social-media artifacts", "d": "Long-form ChatGPT-history article that embeds a tweet-roundup section full of @handles, t.co short links, dates, and multiple emoji (🇺🇸 😍 🎄 🎅 🩵 🌐 🎉); ends without terminal punctuation."},
+"ec2ad532-8f7c-40d8-a973-54950aa99b0c":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"\"Introduction: To Kill a Mockingbird is a story set in the small, raci...\""},
+"ec2da957-5161-4c9c-b739-9491d18c7cce":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"È uscita la quarta puntata di Viaggio a Tokyo: il podcast del Post in ...\""},
+"ef6e57af-7a40-484b-86ff-dadfe1158008":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Anthropic is releasing a new frontier AI model called Claude 3.7 Sonne...\""},
+"Ziv_text_04":{"l": "Production/stage-direction markers", "d": "Same Business Wars podcast transcript format with bracketed [Music]/[Advertisement break] cues; sentence punctuation itself is clean."},
+"no_esc_de":{"l": "Deliberate markup/escaping test case", "d": "Synthetic fixture built around literal HTML-like tags (<undefined>, </div>) and angle brackets/colons — designed to probe escaping logic, not organic prose."},
+"no_esc_en":{"l": "Deliberate markup/escaping test case", "d": "Synthetic fixture with literal HTML tags (<title>, <body>, <br/>, <div>, <p style=...>) and key:value syntax to test escaping/parsing."},
+"no_esc_es":{"l": "Deliberate markup/escaping test case", "d": "Synthetic fixture with literal tags (<e>, </e>, <status>) and a config-file key:value line, testing escaping behavior."},
+"esc_fr":{"l": "Deliberate markup/escaping test case", "d": "Synthetic fixture with literal tags (<html>, <div>, <br/>) and key:valeur syntax, testing escaping behavior."},
+"no_esc_it":{"l": "Deliberate markup/escaping test case", "d": "Synthetic fixture with literal tags (<header>, <footer>, <br/>) and key:value syntax, testing escaping behavior."},
+"f1317f9b-9897-49a7-bc4c-a520f71b1f7f":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"ChatGPT Plus Subscribers Get Unlimited Sora Access for the Holidays. C...\""},
+"f32feeed-3d08-4485-a7e4-b786a82d5ce4":{"l": "Truncated content", "d": "Ends on an unpunctuated sentence fragment ('...matches your time, interests, and goals'), reading as cut short."},
+"f619a317-7e84-4ea6-977c-fc7c3df97c8c":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Evening had settled over the quiet lakeshore as Anna stepped onto the ...\""},
+"f85040a8-8037-46cc-8da2-75d1cb2bf46c":{"l": "Missing terminal punctuation", "d": "Text ends without sentence-final punctuation ('...pe, his tale forever etched in the stars')."},
+"f8900fde-c0f9-4722-851f-0e20db8703c1":{"l": "Rare symbol present", "d": "Contains uncommon characters: '#'x1, '~'x1."},
+"fe7fd098-31d8-403e-9cd4-cca332137a96":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Google’s trying to make waves with Gemini, its flagship suite of gener...\""},
+"ff3199b8-450e-4d5a-b758-b5f399058068":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"È uscita la quarta puntata di Viaggio a Tokyo: il podcast del Post in ...\""},
+"Business_wars_ep_3_short":{"l": "Escaped-newline artifact", "d": "Same literal backslash-n issue as the full episode (~27x instead of real line breaks); also ends without terminal punctuation."},
+"Ziv_text_01":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Episode 01B: Dunkin’ Donuts: il caffè migliore del mondo. È il 1945. L...\""},
+"Ziv_text_02":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Episode 01B: Dunkin’ Donuts: il caffè migliore del mondo.  È il 1945. ...\""},
+"Ziv_text_03":{"l": "Clean", "d": "No punctuation or symbol issues detected. Opens: \"Guerra del Caffè: Episodio 1 (Testo semplificato A1) È il 1950 a Quinc...\""},
+"symbol_num_punct_test":{"l": "Diacritic slip + citation artifact", "d": "Explicitly named as a symbol/punctuation test case; contains a bracketed academic citation [5, 33] and one wrong-accent typo ('informaciòn' should be 'información')."},
+};
 
 // ══ upload ══
 const dz=document.getElementById('drop-zone'),fi=document.getElementById('file-input');
@@ -869,7 +1102,7 @@ function buildComparison(runs){
   const byName=new Map();
   runs.forEach((run,ri)=>{
     run.results.forEach(tc=>{
-      if(!byName.has(tc.name))byName.set(tc.name,{name:tc.name,pair:tc.pair,cefr:tc.cefr,srcLang:tc.srcLang,tgtLang:tc.tgtLang,perRun:new Array(runs.length).fill(null)});
+      if(!byName.has(tc.name))byName.set(tc.name,{name:tc.name,pair:tc.pair,cefr:tc.cefr,srcLang:tc.srcLang,tgtLang:tc.tgtLang,contentLabel:tc.contentLabel,contentLabelDesc:tc.contentLabelDesc,perRun:new Array(runs.length).fill(null)});
       byName.get(tc.name).perRun[ri]=tc;
     });
   });
@@ -1026,6 +1259,8 @@ function populateCmpFilters(){
   const cefrs=[...new Set(cmpRows.map(x=>x.cefr))].filter(Boolean).sort();
   document.getElementById('cf-pair').innerHTML='<option value="">All pairs</option>'+pairs.map(p=>`<option value="${p}">${p}</option>`).join('');
   document.getElementById('cf-cefr').innerHTML='<option value="">All CEFR</option>'+cefrs.map(c=>`<option value="${c}">${c}</option>`).join('');
+  const qualities=[...new Set(cmpRows.map(x=>x.contentLabel))].filter(Boolean).sort((a,b)=>a==='Clean'?-1:b==='Clean'?1:a.localeCompare(b));
+  document.getElementById('cf-quality').innerHTML='<option value="">All content quality</option>'+qualities.map(q=>`<option value="${q}">${q}</option>`).join('');
 
   const segCounts=new Set(),errTypes=new Set(),langs=new Set();
   cmpRuns.forEach(r=>r.results.forEach(tc=>{
@@ -1054,11 +1289,13 @@ function getCmpContextRows(){
   const ce=document.getElementById('cf-cefr').value;
   const se=document.getElementById('cf-search').value.toLowerCase();
   const exLang=document.getElementById('cf-exclude-lang').value;
+  const qa=document.getElementById('cf-quality')?.value||'';
   const annOnly=document.getElementById('cf-annotated-only').checked;
   return cmpRows.filter(r=>{
     if(cls&&r.classification!==cls)return false;
     if(pa&&r.pair!==pa)return false;
     if(ce&&r.cefr!==ce)return false;
+    if(qa&&r.contentLabel!==qa)return false;
     if(se&&!r.name.toLowerCase().includes(se))return false;
     if(exLang&&(r.srcLang===exLang||r.tgtLang===exLang))return false;
     if(annOnly){
@@ -1107,7 +1344,7 @@ function renderCmpStageStrip(){
 }
 
 function attachCmpFilters(){
-  ['cf-class','cf-pair','cf-cefr','cf-search','cf-stage','cf-bucket','cf-segs','cf-errtype','cf-exclude-lang','cf-annotated-only'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{cmpExpandedRow=null;renderCmpTable()}));
+  ['cf-class','cf-pair','cf-cefr','cf-quality','cf-search','cf-stage','cf-bucket','cf-segs','cf-errtype','cf-exclude-lang','cf-annotated-only'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{cmpExpandedRow=null;renderCmpTable()}));
 }
 
 function statusBadgeForTc(tc){
@@ -1128,7 +1365,7 @@ function fmtDelta(d){
 }
 
 function cmpTheadHtml(){
-  let h='<th>Name</th><th>Pair</th><th>CEFR</th>';
+  let h='<th>Name</th><th>Pair</th><th>CEFR</th><th>Content</th>';
   cmpRuns.forEach(r=>h+=`<th>${r.label}</th>`);
   h+='<th>Classification</th><th>Δ Total E2E</th><th>Δ Content ready</th>';
   return h;
@@ -1144,7 +1381,8 @@ function renderCmpTable(){
     const tr=document.createElement('tr');
     const meta=CLS_META[entry.classification]||{label:entry.classification,cls:''};
     const noteMark=cmpAnnotations[entry.name]&&(cmpAnnotations[entry.name].note||cmpAnnotations[entry.name].logfireLink)?'<span title="Has review notes" style="margin-right:4px;">📝</span>':'';
-    let html=`<td class="mono" title="${entry.name}">${noteMark}${entry.name}</td><td style="font-size:11px;">${entry.pair||'—'}</td><td style="font-size:11px;">${entry.cefr||'—'}</td>`;
+    const qBadge=entry.contentLabel==='Clean'?`<span class="badge b-quality-clean">clean</span>`:!entry.contentLabel||entry.contentLabel==='Unlabeled'?`<span class="badge b-quality-clean">—</span>`:`<span class="badge b-quality-flag"${entry.contentLabelDesc?` data-tip="${entry.contentLabelDesc.replace(/"/g,'&quot;')}"`:''}>${entry.contentLabel}</span>`;
+    let html=`<td class="mono" title="${entry.name}">${noteMark}${entry.name}</td><td style="font-size:11px;">${entry.pair||'—'}</td><td style="font-size:11px;">${entry.cefr||'—'}</td><td>${qBadge}</td>`;
     entry.perRun.forEach(tc=>html+=`<td>${statusBadgeForTc(tc)}</td>`);
     const shiftTxt=entry.errTypeShift?` <span style="color:var(--text-3);font-size:10px;font-family:var(--mono);" data-tip="Same failure, different error code across runs — often backend overload/timeout rather than one fixable bug.">${entry.errTypeShift.from}→${entry.errTypeShift.to}</span>`:'';
     html+=`<td><span class="badge ${meta.cls}">${meta.label}</span>${shiftTxt}</td>`;
@@ -1163,7 +1401,7 @@ function toggleCmpDetail(entry,tr){
   if(ex){ex.remove();document.querySelectorAll('#cmp-tbody tr.expanded').forEach(r=>r.classList.remove('expanded'));if(cmpExpandedRow===entry.name){cmpExpandedRow=null;return}}
   cmpExpandedRow=entry.name;tr.classList.add('expanded');
   const dtr=document.createElement('tr');dtr.id='cmp-det-active';dtr.className='detail-row';
-  const colCount=6+cmpRuns.length;
+  const colCount=7+cmpRuns.length;
   const cols=entry.perRun.map((tc,i)=>{
     const label=cmpRuns[i].label;
     if(!tc)return`<div><div class="dt-title">${label}</div><div style="font-size:11px;color:var(--text-3);">Not present in this run</div></div>`;
@@ -1178,6 +1416,11 @@ function toggleCmpDetail(entry,tr){
       ${errs}
     </div>`;
   }).join('');
+  const qualityBlock=entry.contentLabel&&entry.contentLabel!=='Clean'&&entry.contentLabel!=='Unlabeled'?`<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border);">
+    <div class="dt-title">Content quality</div>
+    <div class="pills" style="margin-top:.4rem;"><span class="badge b-quality-flag">${entry.contentLabel}</span></div>
+    ${entry.contentLabelDesc?`<div style="font-size:11px;color:var(--text-2);margin-top:.35rem;">${escHtml(entry.contentLabelDesc)}</div>`:''}
+  </div>`:'';
   const ann=cmpAnnotations[entry.name]||{};
   const annBlock=`<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border);">
     <div class="dt-title">Review notes <span style="font-weight:400;text-transform:none;color:var(--text-3);">— for pointing reviewers at specific contents; saved with the exported snapshot</span></div>
@@ -1185,7 +1428,7 @@ function toggleCmpDetail(entry,tr){
     <input class="cmp-logfire-input" type="url" placeholder="Logfire log link (optional)" value="${ann.logfireLink?escHtml(ann.logfireLink):''}" style="width:100%;margin-top:.4rem;font-size:12px;padding:.4rem .6rem;border:1px solid var(--border-md);border-radius:6px;background:var(--surface);color:var(--text);font-family:var(--mono);">
     <div class="cmp-logfire-open" style="margin-top:.35rem;">${ann.logfireLink?`<a href="${escHtml(ann.logfireLink)}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--blue);">↗ Open Logfire link</a>`:''}</div>
   </div>`;
-  dtr.innerHTML=`<td colspan="${colCount}"><div class="detail-inner"><div style="display:grid;grid-template-columns:repeat(${cmpRuns.length},1fr);gap:1rem;">${cols}</div>${annBlock}</div></td>`;
+  dtr.innerHTML=`<td colspan="${colCount}"><div class="detail-inner"><div style="display:grid;grid-template-columns:repeat(${cmpRuns.length},1fr);gap:1rem;">${cols}</div>${qualityBlock}${annBlock}</div></td>`;
   tr.after(dtr);
 
   const noteEl=dtr.querySelector('.cmp-note-textarea');
@@ -1311,6 +1554,7 @@ function markSlowProcessing(res){
 
 function buildR(tc){
   const sn=tc.testcase.source_name||'(unnamed)',sc=tc.testcase.source_config||'',tC=tc.testcase.target_config||'',st=(tc.testcase.source_text||[]).join('\n'),h=tc.history||[];
+  const cq=CONTENT_LABELS[sn];
   let tot=null,cont=null,segs=[],aErr=[],cErr=[],asErr=[];
   for(const op of h){
     const errs=op.report_list||[],rt=(op.operator_time?.run_time!=null)?+op.operator_time.run_time:null;
@@ -1326,7 +1570,7 @@ function buildR(tc){
   const segTot=segs.reduce((a,b)=>a+b,0),segSh=(segTot>0&&tot)?segTot/tot:null;
   const crT=(cont!=null&&s0!=null)?cont+s0:null,crErr=hasCErr||(segs.length===0&&hasErr);
   let status='pass';if(hasCErr)status='content-err';else if(hasAsErr)status='assembly-err';else if(hasErr)status='error';
-  return{name:sn,srcCfg:sc,tgtCfg:tC,srcText:st,srcLang:sp[0]||'',tgtLang:tp[0]||'',cefr:sp[1]||'',pair:`${sp[0]||'?'}→${tp[0]||'?'}`,numSegs:segs.length,totalTime:tot,contentTime:cont,segTimes:segs,seg0Time:s0,seg1pTimes:s1p,seg1pAvg:s1pA,segTotalTime:segTot,segTimeShare:segSh,contentReadyTime:crT,contentReadyError:crErr,allErrors:aErr,contentErrors:cErr,assemblyErrors:asErr,hasError:hasErr,hasContentStepError:hasCErr,hasAssemblyError:hasAsErr,isZeroSeg:segs.length===0,errType:eType,isSlow:false,status};
+  return{name:sn,srcCfg:sc,tgtCfg:tC,srcText:st,srcLang:sp[0]||'',tgtLang:tp[0]||'',cefr:sp[1]||'',pair:`${sp[0]||'?'}→${tp[0]||'?'}`,numSegs:segs.length,totalTime:tot,contentTime:cont,segTimes:segs,seg0Time:s0,seg1pTimes:s1p,seg1pAvg:s1pA,segTotalTime:segTot,segTimeShare:segSh,contentReadyTime:crT,contentReadyError:crErr,allErrors:aErr,contentErrors:cErr,assemblyErrors:asErr,hasError:hasErr,hasContentStepError:hasCErr,hasAssemblyError:hasAsErr,isZeroSeg:segs.length===0,errType:eType,isSlow:false,status,contentLabel:cq?cq.l:'Unlabeled',contentLabelDesc:cq?cq.d:''};
 }
 
 // ══ math ══
@@ -1889,6 +2133,9 @@ function populateFilters(r){
   // dynamic seg count filter (f-segs)
   const segCounts=[...new Set(r.map(x=>x.numSegs))].sort((a,b)=>a-b);
   document.getElementById('f-segs').innerHTML='<option value="">All seg counts</option>'+segCounts.map(n=>`<option value="${n}">${n} seg${n!==1?'s':''}</option>`).join('');
+  // dynamic content quality filter (f-quality)
+  const qualities=[...new Set(r.map(x=>x.contentLabel))].filter(Boolean).sort((a,b)=>a==='Clean'?-1:b==='Clean'?1:a.localeCompare(b));
+  document.getElementById('f-quality').innerHTML='<option value="">All content quality</option>'+qualities.map(q=>`<option value="${q}">${q}</option>`).join('');
   // dynamic seg index filter (sf-index)
   const maxIdx=r.reduce((a,x)=>Math.max(a,x.segTimes.length),0);
   let idxHtml='<option value="">All indices</option>';
@@ -1896,7 +2143,7 @@ function populateFilters(r){
   document.getElementById('sf-index').innerHTML=idxHtml;
 }
 function attachFilters(){
-  ['f-status','f-speed','f-pair','f-cefr','f-errtype','f-segs','f-search'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{expandedRow=null;renderTcTable()}));
+  ['f-status','f-speed','f-pair','f-cefr','f-errtype','f-segs','f-quality','f-search'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{expandedRow=null;renderTcTable()}));
   ['sf-index','sf-pair2','sf-cefr2','sf-speed','sf-tc-status','sf-tc-errtype','sf-search'].forEach(id=>document.getElementById(id).addEventListener('input',()=>renderSegTable()));
   ['ff-pair','ff-cefr','ff-errtype'].forEach(id=>document.getElementById(id).addEventListener('input',()=>renderFailures(allR)));
 }
@@ -1918,6 +2165,7 @@ function istrip(stats){return`<div class="istrip">`+stats.map(s=>`<div class="is
 function getTcFiltered(){
   const st=document.getElementById('f-status').value,pa=document.getElementById('f-pair').value,ce=document.getElementById('f-cefr').value,et=document.getElementById('f-errtype').value,sg=document.getElementById('f-segs').value,se=document.getElementById('f-search').value.toLowerCase();
   const sp=document.getElementById('f-speed')?.value||'';
+  const qa=document.getElementById('f-quality')?.value||'';
   const allTotT=allR.map(x=>x.totalTime).filter(v=>v!=null);
   const medE2E=med(allTotT),p90E2E=pct(allTotT,90);
   return allR.filter(x=>{
@@ -1934,6 +2182,7 @@ function getTcFiltered(){
     if(ce&&x.cefr!==ce)return false;
     if(et&&x.errType!==et)return false;
     if(sg&&x.numSegs!==+sg)return false;
+    if(qa&&x.contentLabel!==qa)return false;
     if(se&&!x.name.toLowerCase().includes(se))return false;
     return true;
   });
@@ -1982,10 +2231,12 @@ function renderTcTable(){
     const ssh=x.segTimeShare!=null?fp(x.segTimeShare):'—';
     const sshC=x.segTimeShare!=null?(x.segTimeShare>.75?'var(--amber)':x.segTimeShare<.25?'var(--blue)':'var(--text-2)'):'var(--text-3)';
     const crC=x.contentReadyTime!=null&&x.contentReadyTime>30?'var(--amber)':'var(--text-2)';
+    const qBadge=x.contentLabel==='Clean'?`<span class="badge b-quality-clean">clean</span>`:x.contentLabel==='Unlabeled'?`<span class="badge b-quality-clean">—</span>`:`<span class="badge b-quality-flag"${x.contentLabelDesc?` data-tip="${x.contentLabelDesc.replace(/"/g,'&quot;')}"`:''}>${x.contentLabel}</span>`;
     tr.innerHTML=`
       <td class="mono" title="${x.name}">${x.name}</td>
       <td style="font-size:11px;">${x.pair}</td>
       <td style="font-size:11px;">${x.cefr||'—'}</td>
+      <td>${qBadge}</td>
       <td>${x.numSegs}</td>
       <td style="font-weight:600;color:${crC};font-variant-numeric:tabular-nums;font-size:12px;" data-tip="Content step + Seg 0 = first output visible to user.">${fmt(x.contentReadyTime)}</td>
       <td><div class="tbw"><div class="tmini" style="width:${bw}px;background:${bc};flex-shrink:0;"></div><span style="font-size:12px;font-variant-numeric:tabular-nums;">${fmt(x.totalTime)}</span></div></td>
@@ -2071,7 +2322,7 @@ function toggleDetail(x,tr){
   if(ex){ex.remove();document.querySelectorAll('tbody tr.expanded').forEach(r=>r.classList.remove('expanded'));if(expandedRow===x.name){expandedRow=null;return}}
   expandedRow=x.name;tr.classList.add('expanded');
   const dtr=document.createElement('tr');dtr.id='det-active';dtr.className='detail-row';
-  dtr.innerHTML=`<td colspan="11"><div class="detail-inner">${detailHTML(x)}</div></td>`;
+  dtr.innerHTML=`<td colspan="12"><div class="detail-inner">${detailHTML(x)}</div></td>`;
   tr.after(dtr);
 }
 function detailHTML(x){
@@ -2088,6 +2339,7 @@ function detailHTML(x){
       <div class="dt-title">Source text</div><div class="src-box">${src}</div>
       <div style="margin-top:.6rem;"><div class="dt-title">Config</div>
       <div class="pills"><span class="pill">src: ${x.srcCfg||'—'}</span><span class="pill">tgt: ${x.tgtCfg||'—'}</span><span class="pill">${x.numSegs} segs</span>${x.contentReadyTime!=null?`<span class="pill">content ready: ${fmt(x.contentReadyTime)}</span>`:''}</div></div>
+      ${x.contentLabel&&x.contentLabel!=='Clean'&&x.contentLabel!=='Unlabeled'?`<div style="margin-top:.6rem;"><div class="dt-title">Content quality</div><div class="pills"><span class="badge b-quality-flag">${x.contentLabel}</span></div>${x.contentLabelDesc?`<div style="font-size:11px;color:var(--text-2);margin-top:.35rem;">${x.contentLabelDesc.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`:''}</div>`:''}
       ${errs}
     </div>
     <div>
