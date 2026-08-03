@@ -179,6 +179,18 @@ window.addEventListener('scroll',()=>{
   .filter-bar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem}
   .filter-bar select,.filter-bar input{font-size:11px;padding:4px 8px;border-radius:var(--radius-sm);border:1px solid var(--border-md);background:var(--surface);color:var(--text);height:28px;outline:none;font-family:var(--font)}
   .filter-bar input{min-width:150px}
+  .msel{position:relative;display:inline-block}
+  .msel-btn{font-size:11px;padding:4px 8px;border-radius:var(--radius-sm);border:1px solid var(--border-md);background:var(--surface);color:var(--text);height:28px;outline:none;font-family:var(--font);cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+  .msel-btn.msel-active{border-color:var(--blue);color:var(--blue)}
+  .msel-caret{font-size:9px;opacity:.6;flex-shrink:0}
+  .msel-menu{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:40;background:var(--surface2);border:1px solid var(--border-md);border-radius:6px;padding:6px;min-width:180px;max-height:240px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .msel-menu.open{display:block}
+  .msel-opt{display:flex;align-items:center;gap:6px;padding:4px 5px;font-size:11px;color:var(--text);cursor:pointer;border-radius:4px;white-space:nowrap}
+  .msel-opt:hover{background:var(--surface3)}
+  .msel-opt input{cursor:pointer;flex-shrink:0}
+  .msel-clear{font-size:10px;color:var(--text-3);cursor:pointer;padding:5px 5px 2px;margin-top:3px;border-top:1px solid var(--border)}
+  .msel-clear:hover{color:var(--text)}
+  .msel-empty{font-size:11px;color:var(--text-3);padding:3px 5px}
   .f-count{font-size:11px;color:var(--text-3);margin-left:auto}
 
   /* ── inline stats strip ── */
@@ -402,9 +414,10 @@ window.addEventListener('scroll',()=>{
       <span class="section-desc">What kinds of failures, where, and across which dimensions?</span>
     </div>
     <div class="filter-bar" style="margin-bottom:.75rem;">
-      <select id="ff-pair"><option value="">All pairs</option></select>
-      <select id="ff-cefr"><option value="">All CEFR</option></select>
-      <select id="ff-errtype"><option value="">All issue types</option></select>
+      <div class="msel" id="ff-pair"><button type="button" class="msel-btn" id="ff-pair-btn" onclick="mselToggle('ff-pair')">All pairs</button><div class="msel-menu" id="ff-pair-menu"></div></div>
+      <div class="msel" id="ff-cefr"><button type="button" class="msel-btn" id="ff-cefr-btn" onclick="mselToggle('ff-cefr')">All CEFR</button><div class="msel-menu" id="ff-cefr-menu"></div></div>
+      <div class="msel" id="ff-errtype"><button type="button" class="msel-btn" id="ff-errtype-btn" onclick="mselToggle('ff-errtype')">All issue types</button><div class="msel-menu" id="ff-errtype-menu"></div></div>
+      <div class="msel" id="ff-quality"><button type="button" class="msel-btn" id="ff-quality-btn" onclick="mselToggle('ff-quality')">All content quality</button><div class="msel-menu" id="ff-quality-menu"></div></div>
       <span class="f-count" id="ff-count"></span>
     </div>
     <!-- Row 1: Failure patterns + Error/issue type -->
@@ -451,26 +464,13 @@ window.addEventListener('scroll',()=>{
       <span class="section-desc">One row per testcase · click to expand · stats update with filters</span>
     </div>
     <div class="filter-bar">
-      <select id="f-status">
-        <option value="">All states</option>
-        <option value="pass">Pass</option>
-        <option value="slow">Slow</option>
-        <option value="error">Any error</option>
-        <option value="content-err">Content step error</option>
-        <option value="assembly-err">Assembly step error</option>
-        <option value="zero-seg">Zero segments</option>
-      </select>
-      <select id="f-speed">
-        <option value="">Any speed</option>
-        <option value="fast">Below median E2E</option>
-        <option value="slow-flag">Slow-flagged (≥2.5× median)</option>
-        <option value="p90">Above p90 E2E</option>
-      </select>
-      <select id="f-pair"><option value="">All pairs</option></select>
-      <select id="f-cefr"><option value="">All CEFR</option></select>
-      <select id="f-errtype"><option value="">All error types</option></select>
-      <select id="f-segs"><option value="">All seg counts</option></select>
-      <select id="f-quality"><option value="">All content quality</option></select>
+      <div class="msel" id="f-status"><button type="button" class="msel-btn" id="f-status-btn" onclick="mselToggle('f-status')">All states</button><div class="msel-menu" id="f-status-menu"></div></div>
+      <div class="msel" id="f-speed"><button type="button" class="msel-btn" id="f-speed-btn" onclick="mselToggle('f-speed')">Any speed</button><div class="msel-menu" id="f-speed-menu"></div></div>
+      <div class="msel" id="f-pair"><button type="button" class="msel-btn" id="f-pair-btn" onclick="mselToggle('f-pair')">All pairs</button><div class="msel-menu" id="f-pair-menu"></div></div>
+      <div class="msel" id="f-cefr"><button type="button" class="msel-btn" id="f-cefr-btn" onclick="mselToggle('f-cefr')">All CEFR</button><div class="msel-menu" id="f-cefr-menu"></div></div>
+      <div class="msel" id="f-errtype"><button type="button" class="msel-btn" id="f-errtype-btn" onclick="mselToggle('f-errtype')">All error types</button><div class="msel-menu" id="f-errtype-menu"></div></div>
+      <div class="msel" id="f-segs"><button type="button" class="msel-btn" id="f-segs-btn" onclick="mselToggle('f-segs')">All seg counts</button><div class="msel-menu" id="f-segs-menu"></div></div>
+      <div class="msel" id="f-quality"><button type="button" class="msel-btn" id="f-quality-btn" onclick="mselToggle('f-quality')">All content quality</button><div class="msel-menu" id="f-quality-menu"></div></div>
       <input type="text" id="f-search" placeholder="Search name…">
       <span class="f-count" id="tc-count"></span>
     </div>
@@ -504,24 +504,13 @@ window.addEventListener('scroll',()=>{
       <span class="section-desc">One row per invocation · isolate cold-start (Seg 0) vs warm (Seg 1+) · stats update with filters</span>
     </div>
     <div class="filter-bar">
-      <select id="sf-index">
-        <option value="">All indices</option>
-      </select>
-      <select id="sf-pair2"><option value="">All pairs</option></select>
-      <select id="sf-cefr2"><option value="">All CEFR</option></select>
-      <select id="sf-speed">
-        <option value="">Any speed</option>
-        <option value="fast">Faster than mean</option>
-        <option value="slow">Slower than mean</option>
-        <option value="2x">≥2× slower than mean</option>
-      </select>
-      <select id="sf-tc-status">
-        <option value="">All TC statuses</option>
-        <option value="pass">TC passed</option>
-        <option value="error">TC errored</option>
-        <option value="slow">TC slow</option>
-      </select>
-      <select id="sf-tc-errtype"><option value="">All TC error types</option></select>
+      <div class="msel" id="sf-index"><button type="button" class="msel-btn" id="sf-index-btn" onclick="mselToggle('sf-index')">All indices</button><div class="msel-menu" id="sf-index-menu"></div></div>
+      <div class="msel" id="sf-pair2"><button type="button" class="msel-btn" id="sf-pair2-btn" onclick="mselToggle('sf-pair2')">All pairs</button><div class="msel-menu" id="sf-pair2-menu"></div></div>
+      <div class="msel" id="sf-cefr2"><button type="button" class="msel-btn" id="sf-cefr2-btn" onclick="mselToggle('sf-cefr2')">All CEFR</button><div class="msel-menu" id="sf-cefr2-menu"></div></div>
+      <div class="msel" id="sf-speed"><button type="button" class="msel-btn" id="sf-speed-btn" onclick="mselToggle('sf-speed')">Any speed</button><div class="msel-menu" id="sf-speed-menu"></div></div>
+      <div class="msel" id="sf-tc-status"><button type="button" class="msel-btn" id="sf-tc-status-btn" onclick="mselToggle('sf-tc-status')">All TC statuses</button><div class="msel-menu" id="sf-tc-status-menu"></div></div>
+      <div class="msel" id="sf-tc-errtype"><button type="button" class="msel-btn" id="sf-tc-errtype-btn" onclick="mselToggle('sf-tc-errtype')">All TC error types</button><div class="msel-menu" id="sf-tc-errtype-menu"></div></div>
+      <div class="msel" id="sf-quality"><button type="button" class="msel-btn" id="sf-quality-btn" onclick="mselToggle('sf-quality')">All content quality</button><div class="msel-menu" id="sf-quality-menu"></div></div>
       <input type="text" id="sf-search" placeholder="Search testcase name…">
       <span class="f-count" id="seg-count"></span>
     </div>
@@ -719,6 +708,82 @@ function moveTip(e){tt.style.left='0';tt.style.top='0';const w=tt.offsetWidth,h=
 // ══ state ══
 let allR=[],allSegs=[],charts={};
 let scTc='_sortKey',sdTc=1,scSg='time',sdSg=-1,expandedRow=null;
+
+// ══ generic multiselect filter widget (checkbox dropdown) ══
+// Replaces native <select> in the detailed dashboard so every filter supports
+// selecting multiple values (OR within a filter, AND across filters).
+const mselState={};      // id -> Set of selected string values
+const mselLabels={};     // id -> {value: display label}
+const mselAllLabel={};   // id -> button text when nothing is selected
+const mselChangeCb={};   // id -> callback fired whenever selection changes
+let mselOpenId=null;
+
+function mselOnChange(id,cb){mselChangeCb[id]=cb}
+
+function mselRender(id,options,allLabel){
+  // options: array of strings, or {value,label} objects
+  if(!mselState[id])mselState[id]=new Set();
+  mselAllLabel[id]=allLabel;
+  const norm=options.map(o=>typeof o==='object'?o:{value:String(o),label:String(o)});
+  const validVals=new Set(norm.map(o=>String(o.value)));
+  for(const v of[...mselState[id]])if(!validVals.has(v))mselState[id].delete(v);
+  mselLabels[id]={};
+  norm.forEach(o=>mselLabels[id][String(o.value)]=o.label);
+  const menu=document.getElementById(id+'-menu');
+  if(menu){
+    menu.innerHTML=norm.length?norm.map(o=>{
+      const val=String(o.value),checked=mselState[id].has(val)?'checked':'';
+      return`<label class="msel-opt"><input type="checkbox" value="${escHtml(val)}" ${checked} data-msel="${id}"> ${escHtml(o.label)}</label>`;
+    }).join('')+`<div class="msel-clear" data-msel-clear="${id}">Clear</div>`:`<div class="msel-empty">No options</div>`;
+  }
+  mselUpdateLabel(id);
+}
+function mselUpdateLabel(id){
+  const btn=document.getElementById(id+'-btn');
+  if(!btn)return;
+  const set=mselState[id]||new Set();
+  const n=set.size;
+  let txt;
+  if(n===0)txt=mselAllLabel[id]||'All';
+  else if(n===1)txt=mselLabels[id]?.[[...set][0]]??[...set][0];
+  else txt=`${n} selected`;
+  btn.innerHTML=`${escHtml(txt)} <span class="msel-caret">▾</span>`;
+  btn.classList.toggle('msel-active',n>0);
+}
+function mselVals(id){return[...(mselState[id]||new Set())]}
+function mselToggle(id){
+  const menu=document.getElementById(id+'-menu');
+  if(!menu)return;
+  if(mselOpenId&&mselOpenId!==id){const m=document.getElementById(mselOpenId+'-menu');if(m)m.classList.remove('open')}
+  const willOpen=!menu.classList.contains('open');
+  menu.classList.toggle('open',willOpen);
+  mselOpenId=willOpen?id:null;
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.msel')){
+    document.querySelectorAll('.msel-menu.open').forEach(m=>m.classList.remove('open'));
+    mselOpenId=null;
+  }
+});
+document.addEventListener('change',e=>{
+  const cb=e.target.closest('input[type=checkbox][data-msel]');
+  if(!cb)return;
+  const id=cb.dataset.msel;
+  if(!mselState[id])mselState[id]=new Set();
+  if(cb.checked)mselState[id].add(cb.value);else mselState[id].delete(cb.value);
+  mselUpdateLabel(id);
+  if(mselChangeCb[id])mselChangeCb[id]();
+});
+document.addEventListener('click',e=>{
+  const clr=e.target.closest('[data-msel-clear]');
+  if(!clr)return;
+  const id=clr.dataset.mselClear;
+  mselState[id]=new Set();
+  const menu=document.getElementById(id+'-menu');
+  if(menu)menu.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.checked=false);
+  mselUpdateLabel(id);
+  if(mselChangeCb[id])mselChangeCb[id]();
+});
 
 // ══ content quality labels (test_suite_content_labels.csv) ══
 const CONTENT_LABELS={
@@ -1475,7 +1540,7 @@ function loadResults(results,filename,metaLabel){
   markSlowProcessing(allR);
   const gm=avg(allR.flatMap(x=>x.segTimes));
   allSegs=[];
-  for(const tc of allR)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null,tcHasError:tc.hasError,tcIsSlow:tc.isSlow,tcErrType:tc.errType,tcStatus:tc.isSlow?'slow':tc.hasError?'error':'pass'}));
+  for(const tc of allR)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null,tcHasError:tc.hasError,tcIsSlow:tc.isSlow,tcErrType:tc.errType,tcStatus:tc.isSlow?'slow':tc.hasError?'error':'pass',tcContentCategory:tc.contentCategory}));
   document.getElementById('upload-screen').style.display='none';
   document.getElementById('dashboard').style.display='flex';
   document.getElementById('tb-filename').textContent=filename||'snapshot';
@@ -1486,8 +1551,11 @@ function loadResults(results,filename,metaLabel){
   latToggle('segs1plus');
   // Fix 6c: auto-apply #errors filter from URL hash
   if(window.location.hash==='#errors'){
-    const sel=document.getElementById('f-status');
-    if(sel){sel.value='error';expandedRow=null;renderTcTable();}
+    mselState['f-status']=new Set(['error']);
+    mselUpdateLabel('f-status');
+    const menu=document.getElementById('f-status-menu');
+    if(menu){const cb=menu.querySelector('input[value="error"]');if(cb)cb.checked=true;}
+    expandedRow=null;renderTcTable();
   }
 }
 
@@ -1515,7 +1583,7 @@ function parse(txt,fname){
   allR=res;
   const gm=avg(res.flatMap(x=>x.segTimes));
   allSegs=[];
-  for(const tc of res)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null,tcHasError:tc.hasError,tcIsSlow:tc.isSlow,tcErrType:tc.errType,tcStatus:tc.isSlow?'slow':tc.hasError?'error':'pass'}));
+  for(const tc of res)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null,tcHasError:tc.hasError,tcIsSlow:tc.isSlow,tcErrType:tc.errType,tcStatus:tc.isSlow?'slow':tc.hasError?'error':'pass',tcContentCategory:tc.contentCategory}));
   document.getElementById('upload-screen').style.display='none';
   document.getElementById('dashboard').style.display='flex';
   document.getElementById('tb-filename').textContent=fname;
@@ -1651,6 +1719,7 @@ function attachStabFilters(){
 // ══ render master ══
 function render(r){
   renderHero(r);
+  populateStaticFilters();
   populateFilters(r);
   renderStability(r);
   renderLatency(r);
@@ -2068,17 +2137,17 @@ function showChartDetail(title, tcs, r){
 }
 
 function renderFailures(r){
-  const ffPair=document.getElementById('ff-pair')?.value||'';
-  const ffCefr=document.getElementById('ff-cefr')?.value||'';
-  const ffErrType=document.getElementById('ff-errtype')?.value||'';
-  if(ffPair||ffCefr||ffErrType)r=r.filter(x=>{
-    if(ffPair&&x.pair!==ffPair)return false;
-    if(ffCefr&&x.cefr!==ffCefr)return false;
-    if(ffErrType&&x.errType!==ffErrType)return false;
+  const ffPair=mselVals('ff-pair'),ffCefr=mselVals('ff-cefr'),ffErrType=mselVals('ff-errtype'),ffQuality=mselVals('ff-quality');
+  const ffActive=ffPair.length||ffCefr.length||ffErrType.length||ffQuality.length;
+  if(ffActive)r=r.filter(x=>{
+    if(ffPair.length&&!ffPair.includes(x.pair))return false;
+    if(ffCefr.length&&!ffCefr.includes(x.cefr))return false;
+    if(ffErrType.length&&!ffErrType.includes(x.errType))return false;
+    if(ffQuality.length&&!ffQuality.includes(x.contentCategory))return false;
     return true;
   });
   const ffCountEl=document.getElementById('ff-count');
-  if(ffCountEl)ffCountEl.textContent=(ffPair||ffCefr||ffErrType)?`${r.length} testcases`:'';
+  if(ffCountEl)ffCountEl.textContent=ffActive?`${r.length} testcases`:'';
 
   // donut — dynamic error types (slow now treated as error type)
   destroyC('donut');
@@ -2158,35 +2227,52 @@ function renderFailures(r){
 function destroyC(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
 
 // ══ filters & populate ══
+// Static option sets — fixed regardless of loaded data, initialized once per render().
+function populateStaticFilters(){
+  mselRender('f-status',[
+    {value:'pass',label:'Pass'},{value:'slow',label:'Slow'},{value:'error',label:'Any error'},
+    {value:'content-err',label:'Content step error'},{value:'assembly-err',label:'Assembly step error'},
+    {value:'zero-seg',label:'Zero segments'}
+  ],'All states');
+  mselRender('f-speed',[
+    {value:'fast',label:'Below median E2E'},{value:'slow-flag',label:'Slow-flagged (≥2.5× median)'},{value:'p90',label:'Above p90 E2E'}
+  ],'Any speed');
+  mselRender('sf-speed',[
+    {value:'fast',label:'Faster than mean'},{value:'slow',label:'Slower than mean'},{value:'2x',label:'≥2× slower than mean'}
+  ],'Any speed');
+  mselRender('sf-tc-status',[
+    {value:'pass',label:'TC passed'},{value:'error',label:'TC errored'},{value:'slow',label:'TC slow'}
+  ],'All TC statuses');
+}
 function populateFilters(r){
   const pairs=[...new Set(r.map(x=>x.pair))].sort();
   const cefrs=[...new Set(r.map(x=>x.cefr).filter(Boolean))].sort();
-  const pairsHtml='<option value="">All pairs</option>'+pairs.map(p=>`<option value="${p}">${p}</option>`).join('');
-  const cefrsHtml='<option value="">All CEFR</option>'+cefrs.map(c=>`<option value="${c}">${c}</option>`).join('');
-  ['f-pair','sf-pair2','ff-pair'].forEach(id=>document.getElementById(id).innerHTML=pairsHtml);
-  ['f-cefr','sf-cefr2','ff-cefr'].forEach(id=>document.getElementById(id).innerHTML=cefrsHtml);
+  ['f-pair','sf-pair2','ff-pair'].forEach(id=>mselRender(id,pairs,'All pairs'));
+  ['f-cefr','sf-cefr2','ff-cefr'].forEach(id=>mselRender(id,cefrs,'All CEFR'));
   // dynamic error type dropdowns
   const errTypes=[...new Set(r.map(x=>x.errType).filter(Boolean))].sort();
-  const errTypesHtml='<option value="">All error types</option>'+errTypes.map(t=>`<option value="${t}">${t==='slow'?'Slow processing':t}</option>`).join('');
-  document.getElementById('f-errtype').innerHTML=errTypesHtml;
-  document.getElementById('ff-errtype').innerHTML=errTypesHtml.replace('All error types','All issue types');
-  document.getElementById('sf-tc-errtype').innerHTML='<option value="">All TC error types</option>'+errTypes.map(t=>`<option value="${t}">${t==='slow'?'Slow processing':t}</option>`).join('');
+  const errOpts=errTypes.map(t=>({value:t,label:t==='slow'?'Slow processing':t}));
+  mselRender('f-errtype',errOpts,'All error types');
+  mselRender('ff-errtype',errOpts,'All issue types');
+  mselRender('sf-tc-errtype',errOpts,'All TC error types');
   // dynamic seg count filter (f-segs)
   const segCounts=[...new Set(r.map(x=>x.numSegs))].sort((a,b)=>a-b);
-  document.getElementById('f-segs').innerHTML='<option value="">All seg counts</option>'+segCounts.map(n=>`<option value="${n}">${n} seg${n!==1?'s':''}</option>`).join('');
-  // dynamic content quality filter (f-quality) — grouped into categories, not the 30+ raw labels
+  mselRender('f-segs',segCounts.map(n=>({value:n,label:`${n} seg${n!==1?'s':''}`})),'All seg counts');
+  // dynamic content quality filter — grouped into categories, not the 30+ raw labels
   const qualities=[...new Set(r.map(x=>x.contentCategory))].filter(Boolean).sort((a,b)=>a==='Clean'?-1:b==='Clean'?1:a.localeCompare(b));
-  document.getElementById('f-quality').innerHTML='<option value="">All content quality</option>'+qualities.map(q=>`<option value="${q}">${q}</option>`).join('');
+  ['f-quality','ff-quality','sf-quality'].forEach(id=>mselRender(id,qualities,'All content quality'));
   // dynamic seg index filter (sf-index)
   const maxIdx=r.reduce((a,x)=>Math.max(a,x.segTimes.length),0);
-  let idxHtml='<option value="">All indices</option>';
-  for(let i=0;i<maxIdx;i++)idxHtml+=`<option value="${i}">Seg ${i}${i===0?' (first)':''}</option>`;
-  document.getElementById('sf-index').innerHTML=idxHtml;
+  const idxOpts=[];
+  for(let i=0;i<maxIdx;i++)idxOpts.push({value:i,label:`Seg ${i}${i===0?' (first)':''}`});
+  mselRender('sf-index',idxOpts,'All indices');
 }
 function attachFilters(){
-  ['f-status','f-speed','f-pair','f-cefr','f-errtype','f-segs','f-quality','f-search'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{expandedRow=null;renderTcTable()}));
-  ['sf-index','sf-pair2','sf-cefr2','sf-speed','sf-tc-status','sf-tc-errtype','sf-search'].forEach(id=>document.getElementById(id).addEventListener('input',()=>renderSegTable()));
-  ['ff-pair','ff-cefr','ff-errtype'].forEach(id=>document.getElementById(id).addEventListener('input',()=>renderFailures(allR)));
+  ['f-status','f-speed','f-pair','f-cefr','f-errtype','f-segs','f-quality'].forEach(id=>mselOnChange(id,()=>{expandedRow=null;renderTcTable()}));
+  document.getElementById('f-search').addEventListener('input',()=>{expandedRow=null;renderTcTable()});
+  ['sf-index','sf-pair2','sf-cefr2','sf-speed','sf-tc-status','sf-tc-errtype','sf-quality'].forEach(id=>mselOnChange(id,()=>renderSegTable()));
+  document.getElementById('sf-search').addEventListener('input',()=>renderSegTable());
+  ['ff-pair','ff-cefr','ff-errtype','ff-quality'].forEach(id=>mselOnChange(id,()=>renderFailures(allR)));
 }
 function attachSortTc(){
   document.querySelectorAll('thead th[data-col]').forEach(th=>{
@@ -2203,27 +2289,35 @@ function attachSortSeg(){
 function istrip(stats){return`<div class="istrip">`+stats.map(s=>`<div class="istat"><span class="istat-val"${s.c?` style="color:${s.c}"`:''}>${s.v}</span><span class="istat-lbl">${s.l}</span></div>`).join('')+'</div>'}
 
 // ══ §5 TESTCASE TABLE ══
+function matchesStatus(x,s){
+  if(s==='pass')return!x.hasError;
+  if(s==='slow')return x.isSlow;
+  if(s==='error')return x.hasError;
+  if(s==='content-err')return x.hasContentStepError;
+  if(s==='assembly-err')return x.hasAssemblyError;
+  if(s==='zero-seg')return x.isZeroSeg;
+  return false;
+}
+function matchesSpeed(x,s,medE2E,p90E2E){
+  if(s==='fast')return x.totalTime!=null&&x.totalTime<(medE2E||Infinity);
+  if(s==='slow-flag')return x.isSlow;
+  if(s==='p90')return x.totalTime!=null&&x.totalTime>=(p90E2E||Infinity);
+  return false;
+}
 function getTcFiltered(){
-  const st=document.getElementById('f-status').value,pa=document.getElementById('f-pair').value,ce=document.getElementById('f-cefr').value,et=document.getElementById('f-errtype').value,sg=document.getElementById('f-segs').value,se=document.getElementById('f-search').value.toLowerCase();
-  const sp=document.getElementById('f-speed')?.value||'';
-  const qa=document.getElementById('f-quality')?.value||'';
+  const st=mselVals('f-status'),pa=mselVals('f-pair'),ce=mselVals('f-cefr'),et=mselVals('f-errtype'),sg=mselVals('f-segs').map(Number),qa=mselVals('f-quality');
+  const sp=mselVals('f-speed');
+  const se=document.getElementById('f-search').value.toLowerCase();
   const allTotT=allR.map(x=>x.totalTime).filter(v=>v!=null);
   const medE2E=med(allTotT),p90E2E=pct(allTotT,90);
   return allR.filter(x=>{
-    if(st==='pass'&&x.hasError)return false; // slow has hasError=true, no need for ||isSlow
-    if(st==='slow'&&!x.isSlow)return false;
-    if(st==='error'&&!x.hasError)return false;
-    if(st==='content-err'&&!x.hasContentStepError)return false;
-    if(st==='assembly-err'&&!x.hasAssemblyError)return false;
-    if(st==='zero-seg'&&!x.isZeroSeg)return false;
-    if(sp==='fast'&&(x.totalTime==null||x.totalTime>=(medE2E||Infinity)))return false;
-    if(sp==='slow-flag'&&!x.isSlow)return false;
-    if(sp==='p90'&&(x.totalTime==null||x.totalTime<(p90E2E||Infinity)))return false;
-    if(pa&&x.pair!==pa)return false;
-    if(ce&&x.cefr!==ce)return false;
-    if(et&&x.errType!==et)return false;
-    if(sg&&x.numSegs!==+sg)return false;
-    if(qa&&x.contentCategory!==qa)return false;
+    if(st.length&&!st.some(s=>matchesStatus(x,s)))return false;
+    if(sp.length&&!sp.some(s=>matchesSpeed(x,s,medE2E,p90E2E)))return false;
+    if(pa.length&&!pa.includes(x.pair))return false;
+    if(ce.length&&!ce.includes(x.cefr))return false;
+    if(et.length&&!et.includes(x.errType))return false;
+    if(sg.length&&!sg.includes(x.numSegs))return false;
+    if(qa.length&&!qa.includes(x.contentCategory))return false;
     if(se&&!x.name.toLowerCase().includes(se))return false;
     return true;
   });
@@ -2292,21 +2386,31 @@ function renderTcTable(){
 }
 
 // ══ §6 SEGMENT TABLE ══
+function matchesSegSpeed(s,v){
+  if(v==='fast')return s.deviation!=null&&s.deviation<0;
+  if(v==='slow')return s.deviation!=null&&s.deviation>0;
+  if(v==='2x')return s.deviation!=null&&s.deviation>=1;
+  return false;
+}
+function matchesSegTcStatus(s,v){
+  if(v==='pass')return!(s.tcHasError||s.tcIsSlow);
+  if(v==='error')return s.tcHasError;
+  if(v==='slow')return s.tcIsSlow;
+  return false;
+}
 function getSegFiltered(){
-  const ix=document.getElementById('sf-index').value,pa=document.getElementById('sf-pair2').value,ce=document.getElementById('sf-cefr2').value,sp=document.getElementById('sf-speed').value,se=document.getElementById('sf-search').value.toLowerCase();
-  const stc=document.getElementById('sf-tc-status').value,etc=document.getElementById('sf-tc-errtype').value;
+  const ix=mselVals('sf-index').map(Number),pa=mselVals('sf-pair2'),ce=mselVals('sf-cefr2'),sp=mselVals('sf-speed'),qa=mselVals('sf-quality');
+  const stc=mselVals('sf-tc-status'),etc=mselVals('sf-tc-errtype');
+  const se=document.getElementById('sf-search').value.toLowerCase();
   return allSegs.filter(s=>{
-    if(ix&&s.idx!==+ix)return false;
-    if(pa&&s.pair!==pa)return false;
-    if(ce&&s.cefr!==ce)return false;
+    if(ix.length&&!ix.includes(s.idx))return false;
+    if(pa.length&&!pa.includes(s.pair))return false;
+    if(ce.length&&!ce.includes(s.cefr))return false;
     if(se&&!s.tcName.toLowerCase().includes(se))return false;
-    if(sp==='fast'&&(s.deviation==null||s.deviation>=0))return false;
-    if(sp==='slow'&&(s.deviation==null||s.deviation<=0))return false;
-    if(sp==='2x'&&(s.deviation==null||s.deviation<1))return false;
-    if(stc==='pass'&&(s.tcHasError||s.tcIsSlow))return false;
-    if(stc==='error'&&!s.tcHasError)return false;
-    if(stc==='slow'&&!s.tcIsSlow)return false;
-    if(etc&&s.tcErrType!==etc)return false;
+    if(sp.length&&!sp.some(v=>matchesSegSpeed(s,v)))return false;
+    if(stc.length&&!stc.some(v=>matchesSegTcStatus(s,v)))return false;
+    if(etc.length&&!etc.includes(s.tcErrType))return false;
+    if(qa.length&&!qa.includes(s.tcContentCategory))return false;
     return true;
   });
 }
