@@ -1102,7 +1102,7 @@ function buildComparison(runs){
   const byName=new Map();
   runs.forEach((run,ri)=>{
     run.results.forEach(tc=>{
-      if(!byName.has(tc.name))byName.set(tc.name,{name:tc.name,pair:tc.pair,cefr:tc.cefr,srcLang:tc.srcLang,tgtLang:tc.tgtLang,contentLabel:tc.contentLabel,contentLabelDesc:tc.contentLabelDesc,perRun:new Array(runs.length).fill(null)});
+      if(!byName.has(tc.name))byName.set(tc.name,{name:tc.name,pair:tc.pair,cefr:tc.cefr,srcLang:tc.srcLang,tgtLang:tc.tgtLang,contentLabel:tc.contentLabel,contentLabelDesc:tc.contentLabelDesc,contentCategory:tc.contentCategory,perRun:new Array(runs.length).fill(null)});
       byName.get(tc.name).perRun[ri]=tc;
     });
   });
@@ -1259,7 +1259,7 @@ function populateCmpFilters(){
   const cefrs=[...new Set(cmpRows.map(x=>x.cefr))].filter(Boolean).sort();
   document.getElementById('cf-pair').innerHTML='<option value="">All pairs</option>'+pairs.map(p=>`<option value="${p}">${p}</option>`).join('');
   document.getElementById('cf-cefr').innerHTML='<option value="">All CEFR</option>'+cefrs.map(c=>`<option value="${c}">${c}</option>`).join('');
-  const qualities=[...new Set(cmpRows.map(x=>x.contentLabel))].filter(Boolean).sort((a,b)=>a==='Clean'?-1:b==='Clean'?1:a.localeCompare(b));
+  const qualities=[...new Set(cmpRows.map(x=>x.contentCategory))].filter(Boolean).sort((a,b)=>a==='Clean'?-1:b==='Clean'?1:a.localeCompare(b));
   document.getElementById('cf-quality').innerHTML='<option value="">All content quality</option>'+qualities.map(q=>`<option value="${q}">${q}</option>`).join('');
 
   const segCounts=new Set(),errTypes=new Set(),langs=new Set();
@@ -1295,7 +1295,7 @@ function getCmpContextRows(){
     if(cls&&r.classification!==cls)return false;
     if(pa&&r.pair!==pa)return false;
     if(ce&&r.cefr!==ce)return false;
-    if(qa&&r.contentLabel!==qa)return false;
+    if(qa&&r.contentCategory!==qa)return false;
     if(se&&!r.name.toLowerCase().includes(se))return false;
     if(exLang&&(r.srcLang===exLang||r.tgtLang===exLang))return false;
     if(annOnly){
@@ -1552,6 +1552,47 @@ function markSlowProcessing(res){
   }
 }
 
+// Groups the 30+ fine-grained content-quality labels into a handful of triage
+// categories (used for the filter dropdown); the specific label stays visible
+// in the badge/tooltip so no detail is lost.
+const CONTENT_CATEGORY_MAP={
+  'Missing terminal punctuation':'Punctuation & spacing',
+  'Irregular spacing':'Punctuation & spacing',
+  'Irregular repeated punctuation':'Punctuation & spacing',
+  'Missing space (split word)':'Punctuation & spacing',
+  'Missing space between words':'Punctuation & spacing',
+  'Mid-word punctuation corruption':'Punctuation & spacing',
+  'Backtick used as quote mark':'Punctuation & spacing',
+  'Possible dropped word after ellipsis':'Punctuation & spacing',
+  'Song lyrics (no terminal punctuation)':'Punctuation & spacing',
+  'Markdown syntax artifact':'Markup & formatting artifacts',
+  'Escaped-newline artifact':'Markup & formatting artifacts',
+  'Citation bracket artifact':'Markup & formatting artifacts',
+  'Document markup/reference artifacts':'Markup & formatting artifacts',
+  'Diacritic slip + citation artifact':'Markup & formatting artifacts',
+  'Unpunctuated podcast transcript':'Transcription / ASR-style',
+  'Unpunctuated raw transcript':'Transcription / ASR-style',
+  'ALL-CAPS transcript with speaker markers':'Transcription / ASR-style',
+  'Production/stage-direction markers':'Transcription / ASR-style',
+  'Transcription-tool watermark':'Transcription / ASR-style',
+  'Truncated content':'Truncated or incomplete',
+  'Unfilled template placeholder':'Truncated or incomplete',
+  'Emoji present':'Symbols & special characters',
+  'Emoji + social-media artifacts':'Symbols & special characters',
+  'Invisible character':'Symbols & special characters',
+  'Invisible character + irregular punctuation':'Symbols & special characters',
+  'Rare symbol present':'Symbols & special characters',
+  'Rare typographic symbol':'Symbols & special characters',
+  'Rare spacing character':'Symbols & special characters',
+  'Corrupted technical term':'Symbols & special characters',
+  'Technical diagram notation':'Symbols & special characters',
+  'Deliberate markup/escaping test case':'Synthetic test fixture',
+};
+function categoryFor(label){
+  if(label==='Clean'||label==='Unlabeled')return label;
+  return CONTENT_CATEGORY_MAP[label]||'Other';
+}
+
 function buildR(tc){
   const sn=tc.testcase.source_name||'(unnamed)',sc=tc.testcase.source_config||'',tC=tc.testcase.target_config||'',st=(tc.testcase.source_text||[]).join('\n'),h=tc.history||[];
   const cq=CONTENT_LABELS[sn];
@@ -1570,7 +1611,7 @@ function buildR(tc){
   const segTot=segs.reduce((a,b)=>a+b,0),segSh=(segTot>0&&tot)?segTot/tot:null;
   const crT=(cont!=null&&s0!=null)?cont+s0:null,crErr=hasCErr||(segs.length===0&&hasErr);
   let status='pass';if(hasCErr)status='content-err';else if(hasAsErr)status='assembly-err';else if(hasErr)status='error';
-  return{name:sn,srcCfg:sc,tgtCfg:tC,srcText:st,srcLang:sp[0]||'',tgtLang:tp[0]||'',cefr:sp[1]||'',pair:`${sp[0]||'?'}→${tp[0]||'?'}`,numSegs:segs.length,totalTime:tot,contentTime:cont,segTimes:segs,seg0Time:s0,seg1pTimes:s1p,seg1pAvg:s1pA,segTotalTime:segTot,segTimeShare:segSh,contentReadyTime:crT,contentReadyError:crErr,allErrors:aErr,contentErrors:cErr,assemblyErrors:asErr,hasError:hasErr,hasContentStepError:hasCErr,hasAssemblyError:hasAsErr,isZeroSeg:segs.length===0,errType:eType,isSlow:false,status,contentLabel:cq?cq.l:'Unlabeled',contentLabelDesc:cq?cq.d:''};
+  return{name:sn,srcCfg:sc,tgtCfg:tC,srcText:st,srcLang:sp[0]||'',tgtLang:tp[0]||'',cefr:sp[1]||'',pair:`${sp[0]||'?'}→${tp[0]||'?'}`,numSegs:segs.length,totalTime:tot,contentTime:cont,segTimes:segs,seg0Time:s0,seg1pTimes:s1p,seg1pAvg:s1pA,segTotalTime:segTot,segTimeShare:segSh,contentReadyTime:crT,contentReadyError:crErr,allErrors:aErr,contentErrors:cErr,assemblyErrors:asErr,hasError:hasErr,hasContentStepError:hasCErr,hasAssemblyError:hasAsErr,isZeroSeg:segs.length===0,errType:eType,isSlow:false,status,contentLabel:cq?cq.l:'Unlabeled',contentLabelDesc:cq?cq.d:'',contentCategory:categoryFor(cq?cq.l:'Unlabeled')};
 }
 
 // ══ math ══
@@ -2133,8 +2174,8 @@ function populateFilters(r){
   // dynamic seg count filter (f-segs)
   const segCounts=[...new Set(r.map(x=>x.numSegs))].sort((a,b)=>a-b);
   document.getElementById('f-segs').innerHTML='<option value="">All seg counts</option>'+segCounts.map(n=>`<option value="${n}">${n} seg${n!==1?'s':''}</option>`).join('');
-  // dynamic content quality filter (f-quality)
-  const qualities=[...new Set(r.map(x=>x.contentLabel))].filter(Boolean).sort((a,b)=>a==='Clean'?-1:b==='Clean'?1:a.localeCompare(b));
+  // dynamic content quality filter (f-quality) — grouped into categories, not the 30+ raw labels
+  const qualities=[...new Set(r.map(x=>x.contentCategory))].filter(Boolean).sort((a,b)=>a==='Clean'?-1:b==='Clean'?1:a.localeCompare(b));
   document.getElementById('f-quality').innerHTML='<option value="">All content quality</option>'+qualities.map(q=>`<option value="${q}">${q}</option>`).join('');
   // dynamic seg index filter (sf-index)
   const maxIdx=r.reduce((a,x)=>Math.max(a,x.segTimes.length),0);
@@ -2182,7 +2223,7 @@ function getTcFiltered(){
     if(ce&&x.cefr!==ce)return false;
     if(et&&x.errType!==et)return false;
     if(sg&&x.numSegs!==+sg)return false;
-    if(qa&&x.contentLabel!==qa)return false;
+    if(qa&&x.contentCategory!==qa)return false;
     if(se&&!x.name.toLowerCase().includes(se))return false;
     return true;
   });
