@@ -1,0 +1,15 @@
+# DigitalOcean App Platform spec — static site, no build step.
+# Create the app once with:  doctl apps create --spec .do/app.yaml
+# Update it later with:       doctl apps update <APP_ID> --spec .do/app.yaml
+name: ella-nlp-dashboard
+region: fra
+static_sites:
+  - name: dashboard
+    github:
+      repo: MartirosyanMariam/ella-nlp-dashboard
+      branch: main
+      deploy_on_push: true
+    source_dir: /
+    # No build_command / output_dir: the repo root is already the web root.
+    index_document: index.html
+    catchall_document: index.html
