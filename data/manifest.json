@@ -1,4 +1,77 @@
 {
-  "generated": "2026-08-27T00:00:00Z",
-  "runs": []
+  "generated": "2026-08-27T12:31:28Z",
+  "runs": [
+    {
+      "file": "data/backend-remote-results-2026-08-26-data-001.out",
+      "name": "backend-remote-results-2026-08-26-data-001.out",
+      "date": "2026-08-26",
+      "bytes": 4489713
+    },
+    {
+      "file": "data/backend-remote-results-2026-08-20-data-001.out",
+      "name": "backend-remote-results-2026-08-20-data-001.out",
+      "date": "2026-08-20",
+      "bytes": 3599759
+    },
+    {
+      "file": "data/backend-remote-results-2026-08-12-data-001.out",
+      "name": "backend-remote-results-2026-08-12-data-001.out",
+      "date": "2026-08-12",
+      "bytes": 3631054
+    },
+    {
+      "file": "data/backend-remote-results-2026-07-30-data-001.out",
+      "name": "backend-remote-results-2026-07-30-data-001.out",
+      "date": "2026-07-30",
+      "bytes": 3722432
+    },
+    {
+      "file": "data/backend-remote-results-2026-07-23-data-001.out",
+      "name": "backend-remote-results-2026-07-23-data-001.out",
+      "date": "2026-07-23",
+      "bytes": 3703986
+    },
+    {
+      "file": "data/backend-remote-results-2026-07-13-data-001.out",
+      "name": "backend-remote-results-2026-07-13-data-001.out",
+      "date": "2026-07-13",
+      "bytes": 3513916
+    },
+    {
+      "file": "data/backend-remote-results-2026-06-30.data-001.out",
+      "name": "backend-remote-results-2026-06-30.data-001.out",
+      "date": "2026-06-30",
+      "bytes": 3980273
+    },
+    {
+      "file": "data/backend-remote-results-2026-06-26-data-001.out",
+      "name": "backend-remote-results-2026-06-26-data-001.out",
+      "date": "2026-06-26",
+      "bytes": 2027052
+    },
+    {
+      "file": "data/backend-local-results-2026-05-25-data-001.out",
+      "name": "backend-local-results-2026-05-25-data-001.out",
+      "date": "2026-05-25",
+      "bytes": 2136262
+    },
+    {
+      "file": "data/backend-remote-results-2026-05-25-data-001.out",
+      "name": "backend-remote-results-2026-05-25-data-001.out",
+      "date": "2026-05-25",
+      "bytes": 2065250
+    },
+    {
+      "file": "data/backend-remote-results-2026-05-08-data-001.out",
+      "name": "backend-remote-results-2026-05-08-data-001.out",
+      "date": "2026-05-08",
+      "bytes": 2039131
+    },
+    {
+      "file": "data/backend-remote-results-2026-04-20-data-001.out",
+      "name": "backend-remote-results-2026-04-20-data-001.out",
+      "date": "2026-04-20",
+      "bytes": 2738062
+    }
+  ]
 }
