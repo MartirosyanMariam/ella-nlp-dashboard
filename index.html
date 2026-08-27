@@ -328,9 +328,72 @@ window.addEventListener('scroll',()=>{
   .jnav-btn:hover{background:var(--surface2);color:var(--text)}
   .stab-err-clickable{cursor:pointer}
   .stab-err-clickable:hover td{background:var(--surface2) !important}
+  /* ── auto-ingest run tabs + shared run picker ── */
+  #run-tabs{display:none;flex-wrap:wrap;align-items:center;gap:.6rem 1rem;background:var(--surface);border-bottom:1px solid var(--border-md);padding:.55rem 1.5rem;position:sticky;top:0;z-index:130}
+  #run-tabs .rt-brand{font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--text-3)}
+  .rt-seg{display:inline-flex;background:var(--surface2);border:1px solid var(--border-md);border-radius:9px;padding:2px}
+  .rt-seg button{font-size:12px;font-weight:600;padding:5px 13px;border-radius:7px;border:none;background:transparent;color:var(--text-2);cursor:pointer;font-family:var(--font);transition:background .12s,color .12s}
+  .rt-seg button:hover{color:var(--text)}
+  .rt-seg button.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  #run-picker{margin-left:auto;position:relative}
+  .rp-trigger{display:inline-flex;align-items:center;gap:.55rem;font-size:12px;font-family:var(--font);background:var(--surface2);color:var(--text);border:1px solid var(--border-md);border-radius:8px;padding:6px 11px;cursor:pointer;max-width:60vw}
+  .rp-trigger:hover{border-color:var(--text-3)}
+  .rp-trigger .rp-cal{font-size:13px;opacity:.7}
+  .rp-trigger .rp-main{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rp-trigger .rp-tag{font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);border:1px solid var(--border-md);border-radius:4px;padding:1px 5px;flex:none}
+  .rp-trigger .rp-caret{color:var(--text-3);flex:none}
+  .rp-panel{display:none;position:absolute;right:0;top:calc(100% + 6px);width:340px;max-width:82vw;background:var(--surface);border:1px solid var(--border-md);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.22);z-index:140;overflow:hidden}
+  .rp-panel.open{display:block}
+  .rp-head{display:flex;justify-content:space-between;align-items:baseline;padding:11px 14px 9px;border-bottom:1px solid var(--border)}
+  .rp-head .rp-title{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)}
+  .rp-head .rp-count{font-size:11px;color:var(--text-3)}
+  .rp-list{max-height:min(60vh,380px);overflow-y:auto;padding:5px}
+  .rp-row{display:grid;grid-template-columns:18px 1fr auto;gap:2px 9px;align-items:center;padding:8px 9px;border-radius:8px;cursor:pointer;border:1px solid transparent}
+  .rp-row:hover{background:var(--surface2)}
+  .rp-row.sel{background:var(--blue-bg);border-color:var(--border-md)}
+  .rp-row .rp-mark{grid-row:1/3;font-size:13px;color:var(--blue);display:flex;align-items:center;justify-content:center}
+  .rp-row .rp-date{font-size:13px;font-weight:600;color:var(--text)}
+  .rp-row .rp-age{font-size:11px;color:var(--text-3);text-align:right;white-space:nowrap}
+  .rp-row .rp-file{grid-column:2/4;font-size:10.5px;font-family:var(--mono);color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rp-row.disabled{opacity:.4;cursor:not-allowed}
+  .rp-row.disabled:hover{background:transparent}
+  .rp-foot{padding:8px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-3);display:flex;justify-content:space-between;align-items:center}
+  .rp-foot button{font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer;font-family:var(--font)}
+  .rp-foot button:hover{text-decoration:underline}
+  #run-tabs .rt-fail{flex-basis:100%;order:9;font-size:11px;color:var(--amber);background:var(--amber-bg);border:1px solid var(--border-md);border-radius:7px;padding:5px 10px}
+  #run-tabs .rt-manual{font-size:11px;color:var(--text-3);cursor:pointer;background:none;border:none;font-family:var(--font);padding:4px 2px}
+  #run-tabs .rt-manual:hover{color:var(--text-2);text-decoration:underline}
+  body.manifest-mode #dashboard .top-bar,body.manifest-mode #compare-dashboard .top-bar{top:var(--rt-h,50px)}
+  @media(max-width:640px){
+    #run-picker{margin-left:0;flex-basis:100%}
+    .rp-trigger{max-width:100%;width:100%}
+    .rp-panel{width:100%}
+  }
+  /* new-run toast (open tab picks up a fresh manifest) */
+  #run-toast{display:none;position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:400;background:var(--surface);border:1px solid var(--border-md);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.28);padding:10px 12px 10px 14px;align-items:center;gap:12px;font-size:12.5px;color:var(--text)}
+  #run-toast.show{display:flex}
+  #run-toast b{font-weight:600}
+  #run-toast button{font-size:12px;font-weight:600;font-family:var(--font);border:none;border-radius:7px;padding:5px 11px;cursor:pointer;background:var(--blue);color:#fff}
+  #run-toast .rt-x{background:none;color:var(--text-3);padding:4px 6px;font-weight:400}
 </style>
 </head>
 <body>
+
+<!-- ══ AUTO-INGEST RUN TABS (shown only when a manifest is present) ══ -->
+<div id="run-tabs">
+  <span class="rt-brand">Ella NLP</span>
+  <div class="rt-seg">
+    <button id="rt-tab-detailed" onclick="switchRunTab('detailed')">Detailed Results</button>
+    <button id="rt-tab-comparison" onclick="switchRunTab('comparison')">Comparison</button>
+  </div>
+  <button class="rt-manual" onclick="showManualUpload()" title="Load a result file by hand (fallback)">load a file manually</button>
+  <div id="run-picker"></div>
+</div>
+<div id="run-toast">
+  <span><b>New run available.</b> <span id="run-toast-msg"></span></span>
+  <button onclick="location.reload()">Refresh</button>
+  <button class="rt-x" onclick="document.getElementById('run-toast').classList.remove('show')">✕</button>
+</div>
 
 <!-- ══ UPLOAD ══ -->
 <div id="upload-screen">
@@ -1020,7 +1083,291 @@ dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
 dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');if(e.dataTransfer.files[0])readF(e.dataTransfer.files[0])});
 fi.addEventListener('change',()=>{if(fi.files[0])readF(fi.files[0])});
 function readF(f){const r=new FileReader();r.onload=e=>parse(e.target.result,f.name);r.readAsText(f)}
-function resetToUpload(){document.getElementById('upload-screen').style.display='flex';document.getElementById('dashboard').style.display='none';fi.value='';allR=[];allSegs=[];history.replaceState(null,'',location.pathname+location.search)}
+function resetToUpload(){
+  fi.value='';allR=[];allSegs=[];
+  if(MANIFEST.mode){document.getElementById('dashboard').style.display='none';document.getElementById('upload-screen').style.display='none';document.getElementById('run-tabs').style.display='flex';switchRunTab('detailed');return;}
+  document.getElementById('upload-screen').style.display='flex';document.getElementById('dashboard').style.display='none';history.replaceState(null,'',location.pathname+location.search);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ══ auto-ingest: manifest-driven run browsing (Detailed / Comparison tabs) ══
+// ══════════════════════════════════════════════════════════════════════════
+// The dashboard fetches data/manifest.json on load. If present, it becomes the
+// default experience: a run picker by date, a Detailed Results tab (one run) and
+// a Comparison tab (2–3 runs, default = latest 3). Manual file drop stays as a
+// fallback. If no manifest is reachable (file://, blocked fetch, none committed),
+// nothing changes — the classic drop-zone flow is shown.
+const MANIFEST={
+  mode:false,            // true once a manifest with ≥1 run has loaded
+  runs:[],               // [{file,date,name,bytes,results?,meta?,failed?}] newest→oldest
+  tab:'detailed',        // 'detailed' | 'comparison'
+  detailedFile:null,     // selected run file for the Detailed tab
+  cmpFiles:[],           // 2–3 selected run files for the Comparison tab
+  failCount:0,
+  pickerOpen:false,      // run-picker dropdown panel open state
+};
+
+async function bootstrapFromManifest(){
+  let mf;
+  try{
+    const res=await fetch('data/manifest.json',{cache:'no-cache'});
+    if(!res.ok)return false;
+    mf=await res.json();
+  }catch(e){return false;}
+  const runs=(mf&&Array.isArray(mf.runs)?mf.runs:[])
+    .map(r=>({file:r.file||('data/'+r.name),date:r.date||parseDateFromFilename(r.name||r.file),name:r.name||(r.file||'').split('/').pop(),bytes:r.bytes||null}))
+    .filter(r=>r.file);
+  runs.sort((a,b)=>(b.date||'')<(a.date||'')?-1:(b.date||'')>(a.date||'')?1:(a.name<b.name?1:-1));
+  if(!runs.length)return false;
+  MANIFEST.mode=true;
+  MANIFEST.runs=runs;
+
+  // deep-link: ?tab=comparison&run=<date>&cmp=<date>,<date>,<date>
+  const qs=new URLSearchParams(location.search);
+  const byDate=d=>runs.find(r=>r.date===d);
+  MANIFEST.tab=qs.get('tab')==='comparison'?'comparison':'detailed';
+  MANIFEST.detailedFile=(byDate(qs.get('run'))||runs[0]).file;
+  const cmpQ=(qs.get('cmp')||'').split(',').map(s=>s.trim()).filter(Boolean).map(byDate).filter(Boolean);
+  MANIFEST.cmpFiles=(cmpQ.length>=2?cmpQ:runs.slice(0,3)).map(r=>r.file);
+
+  document.body.classList.add('manifest-mode');
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('run-tabs').style.display='flex';
+  switchRunTab(MANIFEST.tab);
+  requestAnimationFrame(measureRunTabs);
+  startManifestPolling();
+  return true;
+}
+
+// Poll the manifest so an already-open tab notices runs the watcher pushed after
+// page load. Non-intrusive: shows a "New run available · Refresh" toast rather
+// than reloading under the user.
+function startManifestPolling(){
+  const known=new Set(MANIFEST.runs.map(r=>r.file));
+  setInterval(async()=>{
+    if(document.hidden)return;
+    try{
+      const res=await fetch('data/manifest.json',{cache:'no-store'});
+      if(!res.ok)return;
+      const mf=await res.json();
+      const fresh=(mf.runs||[]).filter(r=>!known.has(r.file||('data/'+r.name)));
+      if(fresh.length){
+        const t=document.getElementById('run-toast');
+        const newest=fresh.map(r=>r.date).filter(Boolean).sort().pop();
+        document.getElementById('run-toast-msg').textContent=
+          fresh.length===1?`${fmtRunDate(newest)} was just ingested.`:`${fresh.length} new runs ingested.`;
+        t.classList.add('show');
+      }
+    }catch(e){/* offline / transient — try again next tick */}
+  },180000);
+}
+
+// Lazy-fetch + parse a run file the first time it's needed. Marks the entry
+// failed (and surfaces a visible notice) if the file can't be fetched or parsed.
+async function ensureRunLoaded(entry){
+  if(entry.results)return entry.results;
+  if(entry.failed)return null;
+  let txt;
+  try{
+    const res=await fetch(entry.file,{cache:'no-cache'});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    txt=await res.text();
+  }catch(e){ markRunFailed(entry); return null; }
+  let results=[];
+  try{results=parseRunResults(txt);}catch(e){results=[];}
+  if(!results.length){ markRunFailed(entry); return null; }
+  entry.results=results;
+  const mm=txt.match(/"llm_model"\s*:\s*"([^"]+)"/);
+  entry.meta=mm?`model: ${mm[1]}`:'';
+  return results;
+}
+function markRunFailed(entry){
+  if(!entry.failed){entry.failed=true;MANIFEST.failCount++;}
+  MANIFEST.detailedFile=firstOkFile(MANIFEST.detailedFile);
+  MANIFEST.cmpFiles=MANIFEST.cmpFiles.map(f=>firstOkFile(f)).filter((f,i,a)=>f&&a.indexOf(f)===i);
+}
+function okRuns(){return MANIFEST.runs.filter(r=>!r.failed);}
+function firstOkFile(pref){
+  const ok=okRuns();
+  if(ok.some(r=>r.file===pref))return pref;
+  return ok.length?ok[0].file:null;
+}
+
+function switchRunTab(tab){
+  MANIFEST.tab=tab;
+  MANIFEST.pickerOpen=false;
+  document.getElementById('rt-tab-detailed').classList.toggle('active',tab==='detailed');
+  document.getElementById('rt-tab-comparison').classList.toggle('active',tab==='comparison');
+  renderActiveTab();
+}
+
+// ── run-picker helpers ──
+function fmtRunDate(iso){
+  if(!iso)return'undated';
+  const [y,m,d]=iso.split('-').map(Number);
+  const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return`${MON[(m||1)-1]} ${d}, ${y}`;
+}
+function relAge(iso){
+  if(!iso)return'';
+  const then=new Date(iso+'T00:00:00'),now=new Date();
+  const days=Math.round((now-then)/86400000);
+  if(days<=0)return'today';
+  if(days===1)return'yesterday';
+  if(days<7)return`${days}d ago`;
+  if(days<30)return`${Math.round(days/7)}w ago`;
+  if(days<365)return`${Math.round(days/30)}mo ago`;
+  return`${(days/365).toFixed(1)}y ago`;
+}
+function measureRunTabs(){
+  const el=document.getElementById('run-tabs');
+  if(el)document.documentElement.style.setProperty('--rt-h',el.offsetHeight+'px');
+}
+window.addEventListener('resize',()=>{if(MANIFEST.mode)measureRunTabs();});
+document.addEventListener('click',e=>{
+  if(MANIFEST.pickerOpen&&!e.target.closest('#run-picker')){MANIFEST.pickerOpen=false;renderRunPicker();}
+});
+function toggleRunPicker(e){if(e)e.stopPropagation();MANIFEST.pickerOpen=!MANIFEST.pickerOpen;renderRunPicker();}
+
+function syncManifestUrl(){
+  const p=new URLSearchParams(location.search);
+  p.set('tab',MANIFEST.tab);
+  const fd=f=>{const r=MANIFEST.runs.find(x=>x.file===f);return r&&r.date?r.date:'';};
+  if(MANIFEST.tab==='detailed'){p.delete('cmp');const d=fd(MANIFEST.detailedFile);d?p.set('run',d):p.delete('run');}
+  else{p.delete('run');const ds=MANIFEST.cmpFiles.map(fd).filter(Boolean);ds.length?p.set('cmp',ds.join(',')):p.delete('cmp');}
+  history.replaceState(null,'',location.pathname+'?'+p.toString());
+}
+
+function renderRunPicker(){
+  const pk=document.getElementById('run-picker');
+  const ok=okRuns();
+  const isCmp=MANIFEST.tab==='comparison';
+  const open=MANIFEST.pickerOpen?' open':'';
+  const latestFile=ok[0]&&ok[0].file;
+
+  // ── trigger button ──
+  let trigger;
+  if(isCmp){
+    const dates=MANIFEST.cmpFiles.map(f=>{const r=MANIFEST.runs.find(x=>x.file===f);return r&&r.date;}).filter(Boolean).sort();
+    const span=dates.length?`${fmtRunDate(dates[0])} – ${fmtRunDate(dates[dates.length-1])}`:'pick runs';
+    trigger=`<button class="rp-trigger" onclick="toggleRunPicker(event)" title="Choose which runs to compare">
+      <span class="rp-cal">⇄</span>
+      <span class="rp-main">${MANIFEST.cmpFiles.length} runs</span>
+      <span class="rp-tag">${escHtml(span)}</span>
+      <span class="rp-caret">▾</span></button>`;
+  }else{
+    const cur=MANIFEST.runs.find(r=>r.file===MANIFEST.detailedFile)||ok[0]||{};
+    const tag=cur.file&&cur.file===latestFile?'latest':relAge(cur.date);
+    trigger=`<button class="rp-trigger" onclick="toggleRunPicker(event)" title="Choose which run to view">
+      <span class="rp-cal">📅</span>
+      <span class="rp-main">${escHtml(fmtRunDate(cur.date))}</span>
+      ${tag?`<span class="rp-tag">${escHtml(tag)}</span>`:''}
+      <span class="rp-caret">▾</span></button>`;
+  }
+
+  // ── dropdown panel ──
+  const rows=ok.map((r,i)=>{
+    let selected,disabled='',mark;
+    if(isCmp){
+      selected=MANIFEST.cmpFiles.includes(r.file);
+      if(selected&&MANIFEST.cmpFiles.length<=2)disabled=' disabled';        // keep min 2
+      if(!selected&&MANIFEST.cmpFiles.length>=3)disabled=' disabled';        // cap at 3
+      mark=selected?'☑':'☐';
+    }else{
+      selected=r.file===MANIFEST.detailedFile;
+      mark=selected?'●':'○';
+    }
+    const age=i===0?'latest':relAge(r.date);
+    return`<div class="rp-row${selected?' sel':''}${disabled}" data-file="${escHtml(r.file)}">
+      <span class="rp-mark">${mark}</span>
+      <span class="rp-date">${escHtml(fmtRunDate(r.date))}</span>
+      <span class="rp-age">${escHtml(age)}</span>
+      <span class="rp-file">${escHtml(r.name)}</span>
+    </div>`;
+  }).join('');
+  const foot=isCmp
+    ?`<div class="rp-foot"><span>Pick 2–3 runs · oldest → newest</span><button onclick="event.stopPropagation();MANIFEST.pickerOpen=false;renderRunPicker()">Done</button></div>`
+    :'';
+
+  pk.innerHTML=trigger+`<div class="rp-panel${open}">
+    <div class="rp-head"><span class="rp-title">${isCmp?'Select runs to compare':'Select a run'}</span><span class="rp-count">${ok.length} run${ok.length===1?'':'s'}</span></div>
+    <div class="rp-list">${rows||'<div class="rp-row">No runs available</div>'}</div>
+    ${foot}
+  </div>`;
+
+  pk.querySelectorAll('.rp-row[data-file]').forEach(row=>{
+    row.onclick=(ev)=>{
+      ev.stopPropagation();
+      if(row.classList.contains('disabled'))return;
+      const f=row.dataset.file;
+      if(isCmp){
+        const idx=MANIFEST.cmpFiles.indexOf(f);
+        if(idx>=0){if(MANIFEST.cmpFiles.length>2)MANIFEST.cmpFiles.splice(idx,1);}
+        else if(MANIFEST.cmpFiles.length<3)MANIFEST.cmpFiles.push(f);
+        renderActiveTab();
+      }else{
+        MANIFEST.detailedFile=f;
+        MANIFEST.pickerOpen=false;
+        renderActiveTab();
+      }
+    };
+  });
+
+  // ── failed-run notice ──
+  const oldN=document.querySelector('#run-tabs .rt-fail');if(oldN)oldN.remove();
+  if(MANIFEST.failCount>0){
+    const d=document.createElement('div');
+    d.className='rt-fail';
+    d.textContent=`⚠ ${MANIFEST.failCount} run${MANIFEST.failCount>1?'s':''} couldn't be read and ${MANIFEST.failCount>1?'were':'was'} left out of the picker.`;
+    document.getElementById('run-tabs').appendChild(d);
+  }
+  measureRunTabs();
+}
+
+async function renderActiveTab(){
+  renderRunPicker();
+  syncManifestUrl();
+  if(MANIFEST.tab==='detailed'){
+    document.getElementById('compare-dashboard').style.display='none';
+    const entry=MANIFEST.runs.find(r=>r.file===MANIFEST.detailedFile);
+    if(!entry){document.getElementById('dashboard').style.display='none';return;}
+    const results=await ensureRunLoaded(entry);
+    if(!results){renderRunPicker();return renderActiveTab();}
+    loadResults(results,entry.name,entry.meta||'');
+  }else{
+    let files=MANIFEST.cmpFiles.slice(0,3);
+    const runs=[];
+    for(const f of files){
+      const entry=MANIFEST.runs.find(r=>r.file===f);
+      if(!entry)continue;
+      const results=await ensureRunLoaded(entry);
+      if(!results)continue;
+      runs.push({label:entry.date||entry.name,filename:entry.name,date:entry.date||null,results});
+    }
+    if(runs.length<2){
+      // not enough valid runs to compare — fall back to Detailed
+      renderRunPicker();
+      if(MANIFEST.failCount)return;
+      switchRunTab('detailed');return;
+    }
+    cmpDatesResolved=runs.every(r=>r.date);
+    cmpRuns=cmpDatesResolved?[...runs].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0):runs;
+    cmpAnnotations={};
+    cmpRows=buildComparison(cmpRuns);
+    document.getElementById('dashboard').style.display='none';
+    renderCompareDashboard();
+    renderRunPicker(); // refresh picker + failure notice after lazy loads
+  }
+}
+
+function showManualUpload(){
+  document.documentElement.style.setProperty('--rt-h','0px');
+  document.getElementById('run-tabs').style.display='none';
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('compare-dashboard').style.display='none';
+  document.getElementById('compare-upload-screen').style.display='none';
+  document.getElementById('upload-screen').style.display='flex';
+}
 
 // ══ compare-mode: run upload slots ══
 let compareSlots=[null,null,null];
@@ -1241,6 +1588,7 @@ function deltaFirstLast(perRun,field){
 }
 
 function resetToCompareUpload(){
+  if(MANIFEST.mode){document.getElementById('compare-dashboard').style.display='none';document.getElementById('run-tabs').style.display='flex';switchRunTab('comparison');return;}
   document.getElementById('compare-dashboard').style.display='none';
   compareSlots=[null,null,null];
   cmpRuns=[];cmpRows=[];cmpDatesResolved=true;cmpAnnotations={};
@@ -1531,8 +1879,12 @@ window.addEventListener('DOMContentLoaded',()=>{
       const {filename,meta,results}=window.__SNAPSHOT__;
       loadResults(results,filename,(meta||'')+' · snapshot');
       document.getElementById('share-btn').style.display='none';
+      return;
     }catch(e){console.warn('Snapshot restore failed:',e)}
   }
+  // No baked-in snapshot: try the committed manifest. Falls through silently to
+  // the classic drop-zone flow if none is reachable.
+  bootstrapFromManifest().catch(e=>console.warn('Manifest bootstrap failed:',e));
 });
 
 function loadResults(results,filename,metaLabel){
@@ -1604,6 +1956,11 @@ function extractErrType(msgs){
 }
 
 function markSlowProcessing(res){
+  // Idempotent: this mutates tc.hasError for slow TCs, so a second pass over the
+  // same array would shrink the baseline and cascade. The manifest flow parses
+  // once and can re-render the cached results many times.
+  if(res.__slowMarked)return;
+  Object.defineProperty(res,'__slowMarked',{value:true,enumerable:false});
   // Use only successful (non-errored) TCs as baseline — errored TCs often abort
   // early and would pull the median down, making the threshold artificially low.
   const totals=res.filter(x=>!x.hasError).map(x=>x.totalTime).filter(v=>v!=null);
