@@ -384,6 +384,12 @@ window.addEventListener('scroll',()=>{
   .ss-link{margin-left:6px;font-size:11px;color:var(--blue);text-decoration:none}
   .ss-link:hover{text-decoration:underline}
   .src-ref{font-family:var(--mono);font-size:11px;word-break:break-all}
+  .src-hd{display:flex;align-items:center;gap:8px}
+  .src-meta{font-weight:400;letter-spacing:0;text-transform:none;color:var(--text-3)}
+  .src-acts{margin-left:auto;display:inline-flex;gap:4px}
+  .src-act{font-size:10px;font-family:var(--font);letter-spacing:0;text-transform:none;font-weight:500;padding:2px 8px;border-radius:20px;border:1px solid var(--border-md);background:var(--surface);color:var(--text-2);cursor:pointer;text-decoration:none;white-space:nowrap}
+  .src-act:hover{color:var(--blue);border-color:var(--blue)}
+  .src-box.full{max-height:65vh}
   .section-hd,#stability-gt,#latency-gt{scroll-margin-top:calc(var(--rt-h,0px) + 104px)}
   @media(max-width:640px){
     .src-scope{padding:.5rem 1rem}
@@ -1884,7 +1890,7 @@ function toggleCmpDetail(entry,tr){
     <input class="cmp-logfire-input" type="url" placeholder="Logfire log link (optional)" value="${ann.logfireLink?escHtml(ann.logfireLink):''}" style="width:100%;margin-top:.4rem;font-size:12px;padding:.4rem .6rem;border:1px solid var(--border-md);border-radius:6px;background:var(--surface);color:var(--text);font-family:var(--mono);">
     <div class="cmp-logfire-open" style="margin-top:.35rem;">${ann.logfireLink?`<a href="${escHtml(ann.logfireLink)}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--blue);">↗ Open Logfire link</a>`:''}</div>
   </div>`;
-  dtr.innerHTML=`<td colspan="${colCount}"><div class="detail-inner"><div style="display:grid;grid-template-columns:repeat(${cmpRuns.length},1fr);gap:1rem;">${cols}</div>${qualityBlock}${annBlock}</div></td>`;
+  dtr.innerHTML=`<td colspan="${colCount}"><div class="detail-inner"><div style="margin-bottom:.9rem;">${srcBlockHtml(entry.perRun.filter(Boolean).slice(-1)[0]||entry)}</div><div style="display:grid;grid-template-columns:repeat(${cmpRuns.length},1fr);gap:1rem;">${cols}</div>${qualityBlock}${annBlock}</div></td>`;
   tr.after(dtr);
 
   const noteEl=dtr.querySelector('.cmp-note-textarea');
@@ -2130,7 +2136,8 @@ function sourceInfo(ct){
   const s=ct.trim();
   let m=s.match(/^youtube:\/\/(.+)$/i);
   if(m)return{type:'youtube',url:'https://www.youtube.com/watch?v='+encodeURIComponent(m[1]),ref:s};
-  if(/^spotify:\/\//i.test(s))return{type:'spotify',url:null,ref:s}; // id alone doesn't say episode vs track
+  m=s.match(/^spotify:\/\/(.+)$/i);
+  if(m)return{type:'spotify',url:'https://open.spotify.com/episode/'+encodeURIComponent(m[1]),ref:s}; // test-suite ids are podcast episodes
   if(/^https?:\/\//i.test(s))return{type:'article',url:s,ref:s};
   return{type:'other',url:null,ref:s};
 }
@@ -2217,7 +2224,37 @@ function srcBadgeHtml(x){
   const t=SRC_META[x.srcType]||SRC_META.text;
   const tip=x.srcRef?` data-tip="${escHtml(x.srcRef)}"`:'';
   const link=x.srcUrl?`<a class="ss-link" href="${escHtml(x.srcUrl)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="Open source link">↗</a>`:'';
-  return`<span class="src-badge"${tip}><span class="ss-dot" style="background:${t.color}"></span>${t.label}</span>${link}`;
+  return`<span style="white-space:nowrap"><span class="src-badge"${tip}><span class="ss-dot" style="background:${t.color}"></span>${t.label}</span>${link}</span>`;
+}
+
+// Source block for expanded rows: link testcases get an "Open" action, text
+// testcases get the full text (scrollable box) with Expand / Copy.
+const SRC_OPEN_LABEL={youtube:'Open on YouTube',spotify:'Open on Spotify',article:'Open article'};
+function srcBlockHtml(x){
+  if(x.srcType&&x.srcType!=='text'){
+    const open=x.srcUrl?`<a class="src-act" href="${escHtml(x.srcUrl)}" target="_blank" rel="noopener noreferrer">${SRC_OPEN_LABEL[x.srcType]||'Open link'} ↗</a>`:'';
+    return`<div class="dt-title src-hd">Source · ${SRC_META[x.srcType]?.label||x.srcType}<span class="src-acts">${open}</span></div>
+      <div class="src-box"><span class="src-ref">${escHtml(x.srcRef||'—')}</span><div style="font-size:11px;color:var(--text-3);margin-top:.35rem;">Link testcase — the text fetched from this source isn't recorded in the results file.</div></div>`;
+  }
+  const t=x.srcText||'';
+  const words=t.trim()?t.trim().split(/\s+/).length:0;
+  const acts=t?`<span class="src-acts">${t.length>400?`<button type="button" class="src-act" onclick="srcExpand(this)">Expand</button>`:''}<button type="button" class="src-act" onclick="srcCopy(this)">Copy</button></span>`:'';
+  return`<div class="dt-title src-hd">Source text${words?` <span class="src-meta">· ${words} words</span>`:''}${acts}</div><div class="src-box">${t?escHtml(t):'—'}</div>`;
+}
+function srcExpand(btn){
+  const box=btn.closest('.src-hd').nextElementSibling;
+  const full=box.classList.toggle('full');
+  btn.textContent=full?'Collapse':'Expand';
+}
+function srcCopy(btn){
+  const txt=btn.closest('.src-hd').nextElementSibling.textContent;
+  const done=()=>{btn.textContent='Copied';setTimeout(()=>btn.textContent='Copy',1500)};
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(txt).then(done,()=>fallbackCopy(txt,done));
+  else fallbackCopy(txt,done);
+}
+function fallbackCopy(txt,done){
+  const ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(_){}ta.remove();
 }
 
 // ══ render master ══
@@ -2986,12 +3023,9 @@ function detailHTML(x){
     x.totalTime!=null?`<div class="bar-row"><div class="bar-lbl" style="font-weight:700;">total</div><div class="bar-bg"><div class="bar-fill" style="width:100%;background:var(--text-3);"></div></div><div class="bar-val" style="font-weight:700;">${fmt(x.totalTime)}</div></div>`:''
   ].filter(Boolean).join('');
   const errs=x.allErrors.map(e=>`<div class="err-box">[${e.op}] ${String(e.msg).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`).join('');
-  const src=(x.srcText&&x.srcText.length>700?x.srcText.slice(0,700)+'…':x.srcText||'—').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   return`<div class="detail-2col">
     <div>
-      ${x.srcType&&x.srcType!=='text'
-        ?`<div class="dt-title">Source · ${SRC_META[x.srcType]?.label||x.srcType}</div><div class="src-box"><span class="src-ref">${x.srcUrl?`<a class="ss-link" style="margin:0" href="${escHtml(x.srcUrl)}" target="_blank" rel="noopener noreferrer">${escHtml(x.srcRef)} ↗</a>`:escHtml(x.srcRef||'—')}</span><div style="font-size:11px;color:var(--text-3);margin-top:.35rem;">Link testcase — the text fetched from this source isn't recorded in the results file.</div></div>`
-        :`<div class="dt-title">Source text</div><div class="src-box">${src}</div>`}
+      ${srcBlockHtml(x)}
       <div style="margin-top:.6rem;"><div class="dt-title">Config</div>
       <div class="pills"><span class="pill">src: ${x.srcCfg||'—'}</span><span class="pill">tgt: ${x.tgtCfg||'—'}</span><span class="pill">${x.numSegs} segs</span>${x.contentReadyTime!=null?`<span class="pill">content ready: ${fmt(x.contentReadyTime)}</span>`:''}</div></div>
       ${x.contentLabel&&x.contentLabel!=='Clean'&&x.contentLabel!=='Unlabeled'?`<div style="margin-top:.6rem;"><div class="dt-title">Content quality</div><div class="pills"><span class="badge b-quality-flag">${x.contentLabel}</span></div>${x.contentLabelDesc?`<div style="font-size:11px;color:var(--text-2);margin-top:.35rem;">${x.contentLabelDesc.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`:''}</div>`:''}
