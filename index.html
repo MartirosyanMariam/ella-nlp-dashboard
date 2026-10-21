@@ -177,8 +177,8 @@ window.addEventListener('scroll',()=>{
 
   /* ── filters ── */
   .filter-bar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:.5rem}
-  .filter-bar select,.filter-bar input{font-size:11px;padding:4px 8px;border-radius:var(--radius-sm);border:1px solid var(--border-md);background:var(--surface);color:var(--text);height:28px;outline:none;font-family:var(--font)}
-  .filter-bar input{min-width:150px}
+  .filter-bar select,.filter-bar input:not([type=checkbox]){font-size:11px;padding:4px 8px;border-radius:var(--radius-sm);border:1px solid var(--border-md);background:var(--surface);color:var(--text);height:28px;outline:none;font-family:var(--font)}
+  .filter-bar input:not([type=checkbox]){min-width:150px}
   .msel{position:relative;display:inline-block}
   .msel-btn{font-size:11px;padding:4px 8px;border-radius:var(--radius-sm);border:1px solid var(--border-md);background:var(--surface);color:var(--text);height:28px;outline:none;font-family:var(--font);cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis}
   .msel-btn.msel-active{border-color:var(--blue);color:var(--blue)}
@@ -187,7 +187,7 @@ window.addEventListener('scroll',()=>{
   .msel-menu.open{display:block}
   .msel-opt{display:flex;align-items:center;gap:6px;padding:4px 5px;font-size:11px;color:var(--text);cursor:pointer;border-radius:4px;white-space:nowrap}
   .msel-opt:hover{background:var(--surface3)}
-  .msel-opt input{cursor:pointer;flex-shrink:0}
+  .msel-opt input{cursor:pointer;flex-shrink:0;width:13px;height:13px;margin:0;accent-color:var(--blue)}
   .msel-clear{font-size:10px;color:var(--text-3);cursor:pointer;padding:5px 5px 2px;margin-top:3px;border-top:1px solid var(--border)}
   .msel-clear:hover{color:var(--text)}
   .msel-empty{font-size:11px;color:var(--text-3);padding:3px 5px}
@@ -364,7 +364,30 @@ window.addEventListener('scroll',()=>{
   #run-tabs .rt-manual{font-size:11px;color:var(--text-3);cursor:pointer;background:none;border:none;font-family:var(--font);padding:4px 2px}
   #run-tabs .rt-manual:hover{color:var(--text-2);text-decoration:underline}
   body.manifest-mode #dashboard .top-bar,body.manifest-mode #compare-dashboard .top-bar{top:var(--rt-h,50px)}
+  /* ── source-type scope bar: one filter that scopes every section of the page ── */
+  .src-scope{position:sticky;top:calc(var(--rt-h,0px) + 50px);z-index:99;background:var(--surface);border-bottom:1px solid var(--border);padding:.5rem 1.5rem;display:flex;align-items:center;gap:.45rem;flex-wrap:wrap}
+  .src-scope:empty{display:none}
+  .ss-title{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3);margin-right:.2rem}
+  .ss-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-family:var(--font);padding:4px 11px;min-height:28px;border-radius:20px;border:1px solid var(--border-md);background:var(--surface);color:var(--text-2);cursor:pointer;transition:background .12s,border-color .12s,color .12s}
+  .ss-chip:hover{border-color:var(--text-3);color:var(--text)}
+  .ss-chip.active{background:var(--blue-bg);border-color:var(--blue);color:var(--blue);font-weight:600}
+  .ss-chip:disabled{cursor:default}
+  .ss-chip:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .ss-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block}
+  .ss-n{font-variant-numeric:tabular-nums;font-weight:600}
+  .ss-sub{font-size:10.5px;color:var(--text-3);font-weight:400}
+  .ss-note{margin-left:auto;font-size:11px;color:var(--text-3)}
+  .ss-note b{color:var(--text-2);font-weight:600}
+  .ss-clear{font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer;font-family:var(--font);padding:0 2px}
+  .ss-clear:hover{text-decoration:underline}
+  .src-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2);white-space:nowrap}
+  .ss-link{margin-left:6px;font-size:11px;color:var(--blue);text-decoration:none}
+  .ss-link:hover{text-decoration:underline}
+  .src-ref{font-family:var(--mono);font-size:11px;word-break:break-all}
+  .section-hd,#stability-gt,#latency-gt{scroll-margin-top:calc(var(--rt-h,0px) + 104px)}
   @media(max-width:640px){
+    .src-scope{padding:.5rem 1rem}
+    .ss-note{margin-left:0;flex-basis:100%}
     #run-picker{margin-left:0;flex-basis:100%}
     .rp-trigger{max-width:100%;width:100%}
     .rp-panel{width:100%}
@@ -433,6 +456,7 @@ window.addEventListener('scroll',()=>{
       <button class="reload-btn" onclick="resetToUpload()">↩ New file</button>
     </div>
   </div>
+  <div class="src-scope" id="src-scope" role="toolbar" aria-label="Filter the whole page by source type"></div>
 
   <!-- ── sticky jump navigation ── -->
   <div id="jump-nav" style="display:none;position:fixed;bottom:20px;right:20px;z-index:200;background:var(--surface);border:1px solid var(--border-md);border-radius:10px;padding:6px;flex-direction:column;gap:3px;box-shadow:0 4px 16px rgba(0,0,0,0.12);">
@@ -542,6 +566,7 @@ window.addEventListener('scroll',()=>{
       <table>
         <thead><tr>
           <th data-col="name">Name <span class="si">↕</span></th>
+          <th data-col="srcType" data-tip="Where the testcase content comes from: inline Text, or a YouTube / Spotify / Article link (content_type). ↗ opens the link.">Source <span class="si">↕</span></th>
           <th data-col="pair">Pair <span class="si">↕</span></th>
           <th data-col="cefr">CEFR <span class="si">↕</span></th>
           <th data-col="contentLabel" data-tip="Content quality label from test_suite_content_labels.csv — flags known issues in the source content itself (dirty punctuation, transcripts, artifacts, etc.), independent of pipeline errors.">Content <span class="si">↕</span></th>
@@ -611,6 +636,7 @@ window.addEventListener('scroll',()=>{
       <button class="reload-btn" onclick="resetToCompareUpload()">↩ New comparison</button>
     </div>
   </div>
+  <div class="src-scope" id="cmp-src-scope" role="toolbar" aria-label="Filter the whole comparison by source type"></div>
 
   <div class="main">
     <div class="section-hd">
@@ -687,14 +713,15 @@ window.addEventListener('scroll',()=>{
 <script>
 // ══ export snapshot (self-contained HTML download) ══
 function shareRun(){
-  if(!allR.length)return;
+  if(!runR.length)return;
   const btn=document.getElementById('share-btn');
   btn.textContent='⏳ Building…';btn.disabled=true;
   try{
     const snapshot={
       filename:document.getElementById('tb-filename').textContent,
       meta:document.getElementById('tb-meta').textContent,
-      results:allR
+      results:runR,              // full run, so the recipient can still switch source type
+      srcScope:[...srcScope]
     };
     // Escape end-of-script sequences in JSON so they can't prematurely close the tag
     const safeJson=JSON.stringify(snapshot).replace(/<\/script/gi,'<\\/script');
@@ -732,7 +759,7 @@ function shareCompare(){
   const btn=document.getElementById('cmp-share-btn');
   btn.textContent='⏳ Building…';btn.disabled=true;
   try{
-    const snapshot={runs:cmpRuns.map(r=>({label:r.label,filename:r.filename,date:r.date,results:r.results})),datesResolved:cmpDatesResolved,annotations:cmpAnnotations};
+    const snapshot={runs:cmpRuns.map(r=>({label:r.label,filename:r.filename,date:r.date,results:r.results})),datesResolved:cmpDatesResolved,annotations:cmpAnnotations,srcScope:[...srcScope]};
     const safeJson=JSON.stringify(snapshot).replace(/<\/script/gi,'<\\/script');
     const snapshotScript=`<script>window.__COMPARE_SNAPSHOT__=${safeJson};<\/script>`;
     const rawHtml=document.documentElement.outerHTML;
@@ -1492,6 +1519,7 @@ function updateCmpGoState(){
 
 // ══ compare-mode: comparison engine ══
 let cmpRuns=[];   // active runs for the current comparison: [{label,filename,date,results}, ...]
+let cmpScoped=[]; // cmpRuns with results narrowed to the source-type scope
 let cmpRows=[];   // one entry per unique testcase name, classified across runs
 let cmpDatesResolved=true; // whether every run had a usable date, so chronological sort was reliable
 let cmpAnnotations={};     // {[testcaseName]: {note, logfireLink}} — manual review notes, persisted in export
@@ -1514,7 +1542,7 @@ function buildComparison(runs){
   const byName=new Map();
   runs.forEach((run,ri)=>{
     run.results.forEach(tc=>{
-      if(!byName.has(tc.name))byName.set(tc.name,{name:tc.name,pair:tc.pair,cefr:tc.cefr,srcLang:tc.srcLang,tgtLang:tc.tgtLang,contentLabel:tc.contentLabel,contentLabelDesc:tc.contentLabelDesc,contentCategory:tc.contentCategory,perRun:new Array(runs.length).fill(null)});
+      if(!byName.has(tc.name))byName.set(tc.name,{name:tc.name,pair:tc.pair,cefr:tc.cefr,srcLang:tc.srcLang,tgtLang:tc.tgtLang,contentLabel:tc.contentLabel,contentLabelDesc:tc.contentLabelDesc,contentCategory:tc.contentCategory,srcType:tc.srcType||'text',srcUrl:tc.srcUrl||null,srcRef:tc.srcRef||null,perRun:new Array(runs.length).fill(null)});
       byName.get(tc.name).perRun[ri]=tc;
     });
   });
@@ -1617,6 +1645,14 @@ function renderCompareDashboard(){
   document.getElementById('dashboard').style.display='none';
   document.getElementById('compare-dashboard').style.display='flex';
 
+  // Source scope: rebuild the matched rows from the scoped runs so hero, per-run
+  // summary, filters and table all describe the same subset.
+  cmpRuns.forEach(r=>normalizeSrc(r.results));
+  const eff=effectiveScope(srcPresent(cmpRuns.flatMap(r=>r.results)));
+  cmpScoped=eff?cmpRuns.map(r=>({...r,results:r.results.filter(x=>eff.has(x.srcType))})):cmpRuns;
+  cmpRows=buildComparison(cmpScoped);
+  renderSrcScope('cmp-src-scope',eff?buildComparison(cmpRuns):cmpRows,false,'testcases');
+
   document.getElementById('cmp-tb-runs').textContent=cmpRuns.map(r=>r.label+(r.date?` (${r.date})`:'')).join('  →  ');
   document.getElementById('cmp-tb-meta').textContent=`${cmpRuns.length} runs`+(cmpDatesResolved?'':' · dates unresolved');
   document.getElementById('cmp-desc').textContent=`${cmpRows.length} unique testcases matched by name`;
@@ -1654,20 +1690,26 @@ function renderCmpHero(){
 }
 
 function renderCmpSummaryGrid(){
-  const cols=cmpRuns.map(r=>({label:r.label}));
+  const cols=cmpScoped.map(r=>({label:r.label}));
   const rows=[];
-  rows.push({label:'Total tests',accent:'blue',cells:cmpRuns.map(r=>({v:r.results.length}))});
-  rows.push({label:'Pass rate',accent:'green',cells:cmpRuns.map(r=>{
+  rows.push({label:'Total tests',accent:'blue',cells:cmpScoped.map(r=>({v:r.results.length}))});
+  rows.push({label:'Pass rate',accent:'green',cells:cmpScoped.map(r=>{
     const n=r.results.length,pass=r.results.filter(x=>!x.hasError).length,rate=n?pass/n:0;
     return{v:fp(rate),s:`${pass}/${n} passed`,color:rate<0.85?'var(--red)':'var(--green)'};
   })});
-  rows.push({label:'Median Total E2E',accent:'amber',cells:cmpRuns.map(r=>({v:fmt(med(r.results.map(x=>x.totalTime).filter(v=>v!=null)))}))});
-  rows.push({label:'P90 Total E2E',accent:'amber',cells:cmpRuns.map(r=>({v:fmt(pct(r.results.map(x=>x.totalTime).filter(v=>v!=null),90))}))});
-  rows.push({label:'Median Content Ready',accent:'purple',cells:cmpRuns.map(r=>({v:fmt(med(r.results.map(x=>x.contentReadyTime).filter(v=>v!=null)))}))});
+  rows.push({label:'Median Total E2E',accent:'amber',cells:cmpScoped.map(r=>({v:fmt(med(r.results.map(x=>x.totalTime).filter(v=>v!=null)))}))});
+  rows.push({label:'P90 Total E2E',accent:'amber',cells:cmpScoped.map(r=>({v:fmt(pct(r.results.map(x=>x.totalTime).filter(v=>v!=null),90))}))});
+  rows.push({label:'Median Content Ready',accent:'purple',cells:cmpScoped.map(r=>({v:fmt(med(r.results.map(x=>x.contentReadyTime).filter(v=>v!=null)))}))});
   document.getElementById('cmp-summary-grid').innerHTML=`<div class="gt-wrap">${gridBlock(cols,rows,'190px')}</div>`;
 }
 
 function populateCmpFilters(){
+  const keepIds=['cf-pair','cf-cefr','cf-quality','cf-segs','cf-errtype','cf-exclude-lang'];
+  const kept=Object.fromEntries(keepIds.map(id=>[id,document.getElementById(id).value]));
+  populateCmpFilterOptions();
+  keepIds.forEach(id=>{const el=document.getElementById(id);if([...el.options].some(o=>o.value===kept[id]))el.value=kept[id];});
+}
+function populateCmpFilterOptions(){
   const pairs=[...new Set(cmpRows.map(x=>x.pair))].filter(Boolean).sort();
   const cefrs=[...new Set(cmpRows.map(x=>x.cefr))].filter(Boolean).sort();
   document.getElementById('cf-pair').innerHTML='<option value="">All pairs</option>'+pairs.map(p=>`<option value="${p}">${p}</option>`).join('');
@@ -1676,7 +1718,7 @@ function populateCmpFilters(){
   document.getElementById('cf-quality').innerHTML='<option value="">All content quality</option>'+qualities.map(q=>`<option value="${q}">${q}</option>`).join('');
 
   const segCounts=new Set(),errTypes=new Set(),langs=new Set();
-  cmpRuns.forEach(r=>r.results.forEach(tc=>{
+  cmpScoped.forEach(r=>r.results.forEach(tc=>{
     segCounts.add(tc.numSegs);
     if(tc.errType)errTypes.add(tc.errType);
     if(tc.srcLang)langs.add(tc.srcLang);
@@ -1757,6 +1799,7 @@ function renderCmpStageStrip(){
 }
 
 function attachCmpFilters(){
+  if(cmpFiltersAttached)return;cmpFiltersAttached=true;
   ['cf-class','cf-pair','cf-cefr','cf-quality','cf-search','cf-stage','cf-bucket','cf-segs','cf-errtype','cf-exclude-lang','cf-annotated-only'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{cmpExpandedRow=null;renderCmpTable()}));
 }
 
@@ -1778,7 +1821,7 @@ function fmtDelta(d){
 }
 
 function cmpTheadHtml(){
-  let h='<th>Name</th><th>Pair</th><th>CEFR</th><th>Content</th>';
+  let h='<th>Name</th><th>Source</th><th>Pair</th><th>CEFR</th><th>Content</th>';
   cmpRuns.forEach(r=>h+=`<th>${r.label}</th>`);
   h+='<th>Classification</th><th>Δ Total E2E</th><th>Δ Content ready</th>';
   return h;
@@ -1795,7 +1838,7 @@ function renderCmpTable(){
     const meta=CLS_META[entry.classification]||{label:entry.classification,cls:''};
     const noteMark=cmpAnnotations[entry.name]&&(cmpAnnotations[entry.name].note||cmpAnnotations[entry.name].logfireLink)?'<span title="Has review notes" style="margin-right:4px;">📝</span>':'';
     const qBadge=entry.contentLabel==='Clean'?`<span class="badge b-quality-clean">clean</span>`:!entry.contentLabel||entry.contentLabel==='Unlabeled'?`<span class="badge b-quality-clean">—</span>`:`<span class="badge b-quality-flag"${entry.contentLabelDesc?` data-tip="${entry.contentLabelDesc.replace(/"/g,'&quot;')}"`:''}>${entry.contentLabel}</span>`;
-    let html=`<td class="mono" title="${entry.name}">${noteMark}${entry.name}</td><td style="font-size:11px;">${entry.pair||'—'}</td><td style="font-size:11px;">${entry.cefr||'—'}</td><td>${qBadge}</td>`;
+    let html=`<td class="mono" title="${entry.name}">${noteMark}${entry.name}</td><td>${srcBadgeHtml(entry)}</td><td style="font-size:11px;">${entry.pair||'—'}</td><td style="font-size:11px;">${entry.cefr||'—'}</td><td>${qBadge}</td>`;
     entry.perRun.forEach(tc=>html+=`<td>${statusBadgeForTc(tc)}</td>`);
     const shiftTxt=entry.errTypeShift?` <span style="color:var(--text-3);font-size:10px;font-family:var(--mono);" data-tip="Same failure, different error code across runs — often backend overload/timeout rather than one fixable bug.">${entry.errTypeShift.from}→${entry.errTypeShift.to}</span>`:'';
     html+=`<td><span class="badge ${meta.cls}">${meta.label}</span>${shiftTxt}</td>`;
@@ -1814,7 +1857,7 @@ function toggleCmpDetail(entry,tr){
   if(ex){ex.remove();document.querySelectorAll('#cmp-tbody tr.expanded').forEach(r=>r.classList.remove('expanded'));if(cmpExpandedRow===entry.name){cmpExpandedRow=null;return}}
   cmpExpandedRow=entry.name;tr.classList.add('expanded');
   const dtr=document.createElement('tr');dtr.id='cmp-det-active';dtr.className='detail-row';
-  const colCount=7+cmpRuns.length;
+  const colCount=8+cmpRuns.length;
   const cols=entry.perRun.map((tc,i)=>{
     const label=cmpRuns[i].label;
     if(!tc)return`<div><div class="dt-title">${label}</div><div style="font-size:11px;color:var(--text-3);">Not present in this run</div></div>`;
@@ -1868,6 +1911,7 @@ window.addEventListener('DOMContentLoaded',()=>{
       cmpRuns=window.__COMPARE_SNAPSHOT__.runs;
       cmpDatesResolved=window.__COMPARE_SNAPSHOT__.datesResolved!==false;
       cmpAnnotations=window.__COMPARE_SNAPSHOT__.annotations||{};
+      restoreSrcScope(window.__COMPARE_SNAPSHOT__.srcScope);
       cmpRows=buildComparison(cmpRuns);
       renderCompareDashboard();
       document.getElementById('cmp-share-btn').style.display='none';
@@ -1876,7 +1920,8 @@ window.addEventListener('DOMContentLoaded',()=>{
   }
   if(window.__SNAPSHOT__){
     try{
-      const {filename,meta,results}=window.__SNAPSHOT__;
+      const {filename,meta,results,srcScope:ss}=window.__SNAPSHOT__;
+      restoreSrcScope(ss);
       loadResults(results,filename,(meta||'')+' · snapshot');
       document.getElementById('share-btn').style.display='none';
       return;
@@ -1888,19 +1933,20 @@ window.addEventListener('DOMContentLoaded',()=>{
 });
 
 function loadResults(results,filename,metaLabel){
-  allR=results;
-  markSlowProcessing(allR);
-  const gm=avg(allR.flatMap(x=>x.segTimes));
-  allSegs=[];
-  for(const tc of allR)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null,tcHasError:tc.hasError,tcIsSlow:tc.isSlow,tcErrType:tc.errType,tcStatus:tc.isSlow?'slow':tc.hasError?'error':'pass',tcContentCategory:tc.contentCategory}));
+  runR=results;
+  // Slow detection runs once on the full run (idempotent), not per source scope.
+  markSlowProcessing(runR);
+  normalizeSrc(runR);
   document.getElementById('upload-screen').style.display='none';
   document.getElementById('dashboard').style.display='flex';
   document.getElementById('tb-filename').textContent=filename||'snapshot';
   document.getElementById('tb-meta').textContent=metaLabel||'';
-  render(allR);
-  stabToggle('content-ready');
-  latToggle('content-ready');
-  latToggle('segs1plus');
+  if(!phaseTogglesInit){
+    // default-open groups on first load; later loads keep whatever the user set
+    stabState['content-ready']=true;latState['content-ready']=true;latState['segs1plus']=true;
+    phaseTogglesInit=true;
+  }
+  applyDetailedScope();
   // Fix 6c: auto-apply #errors filter from URL hash
   if(window.location.hash==='#errors'){
     mselState['f-status']=new Set(['error']);
@@ -1932,16 +1978,8 @@ function parseRunResults(txt){
 
 function parse(txt,fname){
   const res=parseRunResults(txt);
-  allR=res;
-  const gm=avg(res.flatMap(x=>x.segTimes));
-  allSegs=[];
-  for(const tc of res)tc.segTimes.forEach((t,idx)=>allSegs.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null,tcHasError:tc.hasError,tcIsSlow:tc.isSlow,tcErrType:tc.errType,tcStatus:tc.isSlow?'slow':tc.hasError?'error':'pass',tcContentCategory:tc.contentCategory}));
-  document.getElementById('upload-screen').style.display='none';
-  document.getElementById('dashboard').style.display='flex';
-  document.getElementById('tb-filename').textContent=fname;
   const mm=txt.match(/"llm_model"\s*:\s*"([^"]+)"/);
-  document.getElementById('tb-meta').textContent=mm?`model: ${mm[1]}`:'';
-  render(res);
+  loadResults(res,fname,mm?`model: ${mm[1]}`:'');
 }
 
 function extractErrType(msgs){
@@ -2021,6 +2059,7 @@ function categoryFor(label){
 function buildR(tc){
   const sn=tc.testcase.source_name||'(unnamed)',sc=tc.testcase.source_config||'',tC=tc.testcase.target_config||'',st=(tc.testcase.source_text||[]).join('\n'),h=tc.history||[];
   const cq=CONTENT_LABELS[sn];
+  const si=sourceInfo(tc.testcase.content_type);
   let tot=null,cont=null,segs=[],aErr=[],cErr=[],asErr=[];
   for(const op of h){
     const errs=op.report_list||[],rt=(op.operator_time?.run_time!=null)?+op.operator_time.run_time:null;
@@ -2036,7 +2075,7 @@ function buildR(tc){
   const segTot=segs.reduce((a,b)=>a+b,0),segSh=(segTot>0&&tot)?segTot/tot:null;
   const crT=(cont!=null&&s0!=null)?cont+s0:null,crErr=hasCErr||(segs.length===0&&hasErr);
   let status='pass';if(hasCErr)status='content-err';else if(hasAsErr)status='assembly-err';else if(hasErr)status='error';
-  return{name:sn,srcCfg:sc,tgtCfg:tC,srcText:st,srcLang:sp[0]||'',tgtLang:tp[0]||'',cefr:sp[1]||'',pair:`${sp[0]||'?'}→${tp[0]||'?'}`,numSegs:segs.length,totalTime:tot,contentTime:cont,segTimes:segs,seg0Time:s0,seg1pTimes:s1p,seg1pAvg:s1pA,segTotalTime:segTot,segTimeShare:segSh,contentReadyTime:crT,contentReadyError:crErr,allErrors:aErr,contentErrors:cErr,assemblyErrors:asErr,hasError:hasErr,hasContentStepError:hasCErr,hasAssemblyError:hasAsErr,isZeroSeg:segs.length===0,errType:eType,isSlow:false,status,contentLabel:cq?cq.l:'Unlabeled',contentLabelDesc:cq?cq.d:'',contentCategory:categoryFor(cq?cq.l:'Unlabeled')};
+  return{name:sn,srcCfg:sc,tgtCfg:tC,srcText:st,srcLang:sp[0]||'',tgtLang:tp[0]||'',cefr:sp[1]||'',pair:`${sp[0]||'?'}→${tp[0]||'?'}`,numSegs:segs.length,totalTime:tot,contentTime:cont,segTimes:segs,seg0Time:s0,seg1pTimes:s1p,seg1pAvg:s1pA,segTotalTime:segTot,segTimeShare:segSh,contentReadyTime:crT,contentReadyError:crErr,allErrors:aErr,contentErrors:cErr,assemblyErrors:asErr,hasError:hasErr,hasContentStepError:hasCErr,hasAssemblyError:hasAsErr,isZeroSeg:segs.length===0,errType:eType,isSlow:false,status,contentLabel:cq?cq.l:'Unlabeled',contentLabelDesc:cq?cq.d:'',contentCategory:categoryFor(cq?cq.l:'Unlabeled'),srcType:si.type,srcUrl:si.url,srcRef:si.ref};
 }
 
 // ══ math ══
@@ -2071,6 +2110,114 @@ function attachStabFilters(){
     const el=document.getElementById(id);
     if(el)el.addEventListener('input',rerenderStability);
   });
+}
+
+// ══ source type (testcase.content_type) — page-wide scope ══
+// Runs from 2026-10 mix inline-text testcases (content_type null, text in
+// source_text) with link testcases (content_type = youtube://<id>, spotify://<id>
+// or an https article URL; source_text is empty and the fetched text isn't logged).
+// One scope selection filters every section: allR / cmpRows are derived from it.
+const SRC_TYPES=[
+  {key:'text',label:'Text',color:'var(--text-3)'},
+  {key:'youtube',label:'YouTube',color:'var(--red)'},
+  {key:'spotify',label:'Spotify',color:'var(--green-mid)'},
+  {key:'article',label:'Article',color:'var(--blue)'},
+  {key:'other',label:'Other link',color:'var(--purple)'},
+];
+const SRC_META=Object.fromEntries(SRC_TYPES.map(t=>[t.key,t]));
+function sourceInfo(ct){
+  if(typeof ct!=='string'||!ct.trim())return{type:'text',url:null,ref:null};
+  const s=ct.trim();
+  let m=s.match(/^youtube:\/\/(.+)$/i);
+  if(m)return{type:'youtube',url:'https://www.youtube.com/watch?v='+encodeURIComponent(m[1]),ref:s};
+  if(/^spotify:\/\//i.test(s))return{type:'spotify',url:null,ref:s}; // id alone doesn't say episode vs track
+  if(/^https?:\/\//i.test(s))return{type:'article',url:s,ref:s};
+  return{type:'other',url:null,ref:s};
+}
+// Results from older snapshots predate srcType — they are all inline text.
+function normalizeSrc(list){for(const x of list)if(!x.srcType)x.srcType='text';}
+
+let runR=[];              // full parsed run (every source type); allR is its scoped view
+let srcScope=new Set((new URLSearchParams(location.search).get('src')||'').split(',').map(v=>v.trim().toLowerCase()).filter(k=>SRC_META[k]));
+let srcPresentNow=[];     // source types in the data behind the visible scope bar
+let phaseTogglesInit=false;
+let filtersAttached=false,cmpFiltersAttached=false;
+
+function srcPresent(list){return SRC_TYPES.map(t=>t.key).filter(k=>list.some(x=>x.srcType===k));}
+// Selected types that exist in this data; null = no narrowing (all sources).
+function effectiveScope(present){
+  const sel=present.filter(k=>srcScope.has(k));
+  return sel.length&&sel.length<present.length?new Set(sel):null;
+}
+function restoreSrcScope(saved){
+  if(Array.isArray(saved)&&!new URLSearchParams(location.search).has('src'))srcScope=new Set(saved.filter(k=>SRC_META[k]));
+}
+function syncSrcUrl(){
+  const p=new URLSearchParams(location.search);
+  srcScope.size?p.set('src',[...srcScope].join(',')):p.delete('src');
+  const q=p.toString();
+  history.replaceState(null,'',location.pathname+(q?'?'+q:'')+location.hash);
+}
+function srcChipClick(key){
+  const present=srcPresentNow;
+  if(key==='all')srcScope=new Set();
+  else{
+    const cur=new Set(effectiveScope(present)||[]);
+    cur.has(key)?cur.delete(key):cur.add(key);
+    srcScope=(cur.size===0||cur.size===present.length)?new Set():cur;
+  }
+  syncSrcUrl();
+  if(document.getElementById('compare-dashboard').style.display==='flex'){cmpExpandedRow=null;renderCompareDashboard();}
+  else if(runR.length)applyDetailedScope();
+}
+// items: one per testcase ({srcType, hasError?}); withRate adds a pass-rate hint per chip.
+function renderSrcScope(elId,items,withRate,noun){
+  const el=document.getElementById(elId);if(!el)return;
+  const present=srcPresent(items);srcPresentNow=present;
+  const eff=effectiveScope(present);
+  const single=present.length<2;
+  const chip=(key,label,list,color,active)=>{
+    const n=list.length,pass=list.filter(x=>!x.hasError).length;
+    const sub=withRate&&n?`<span class="ss-sub">${fp(pass/n)} pass</span>`:'';
+    const tip=withRate&&n?` data-tip="${label}: ${pass}/${n} ${noun} passed"`:'';
+    return`<button type="button" class="ss-chip${active?' active':''}" aria-pressed="${active}"${single?' disabled':''} onclick="srcChipClick('${key}')"${tip}>${color?`<span class="ss-dot" style="background:${color}"></span>`:''}<span>${label}</span><span class="ss-n">${n}</span>${sub}</button>`;
+  };
+  let html=`<span class="ss-title">Source</span>`;
+  if(!single)html+=chip('all','All',items,null,!eff);
+  for(const k of present)html+=chip(k,SRC_META[k].label,items.filter(x=>x.srcType===k),SRC_META[k].color,single||!!(eff&&eff.has(k)));
+  if(single)html+=`<span class="ss-note">Only source type in ${elId==='cmp-src-scope'?'these runs':'this run'}</span>`;
+  else if(eff){
+    const shown=items.filter(x=>eff.has(x.srcType)).length;
+    html+=`<span class="ss-note">Showing <b>${shown}</b> of ${items.length} ${noun} — every section below is filtered <button type="button" class="ss-clear" onclick="srcChipClick('all')">Show all</button></span>`;
+  }else html+=`<span class="ss-note">Click a source to filter the whole page · click more to combine</span>`;
+  el.innerHTML=html;
+}
+function applyDetailedScope(){
+  const eff=effectiveScope(srcPresent(runR));
+  allR=eff?runR.filter(x=>eff.has(x.srcType)):runR;
+  allSegs=buildSegRows(allR);
+  expandedRow=null;
+  const cd=document.getElementById('chart-detail');if(cd)cd.innerHTML='';
+  renderSrcScope('src-scope',runR,true,'testcases');
+  const keep={stab:{...stabState},lat:{...latState}};
+  render(allR);
+  syncPhaseToggles(keep);
+}
+function buildSegRows(list){
+  const gm=avg(list.flatMap(x=>x.segTimes)),out=[];
+  for(const tc of list)tc.segTimes.forEach((t,idx)=>out.push({tcName:tc.name,pair:tc.pair,cefr:tc.cefr,idx,time:t,tcTotal:tc.totalTime,deviation:gm?(t-gm)/gm:null,segShare:tc.totalTime?t/tc.totalTime:null,tcHasError:tc.hasError,tcIsSlow:tc.isSlow,tcErrType:tc.errType,tcStatus:tc.isSlow?'slow':tc.hasError?'error':'pass',tcContentCategory:tc.contentCategory,tcSrcType:tc.srcType}));
+  return out;
+}
+// render() resets §2/§3 phase groups to collapsed — re-open the ones that were open before.
+function syncPhaseToggles(keep){
+  for(const g in keep.stab)if(keep.stab[g]&&!stabState[g])stabToggle(g);
+  for(const g in keep.lat)if(keep.lat[g]&&!latState[g])latToggle(g);
+}
+function srcBadgeHtml(x){
+  const t=SRC_META[x.srcType]||SRC_META.text;
+  const tip=x.srcRef?` data-tip="${escHtml(x.srcRef)}"`:'';
+  const link=x.srcUrl?`<a class="ss-link" href="${escHtml(x.srcUrl)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="Open source link">↗</a>`:'';
+  return`<span class="src-badge"${tip}><span class="ss-dot" style="background:${t.color}"></span>${t.label}</span>${link}`;
 }
 
 // ══ render master ══
@@ -2625,6 +2772,7 @@ function populateFilters(r){
   mselRender('sf-index',idxOpts,'All indices');
 }
 function attachFilters(){
+  if(filtersAttached)return;filtersAttached=true;
   ['f-status','f-speed','f-pair','f-cefr','f-errtype','f-segs','f-quality'].forEach(id=>mselOnChange(id,()=>{expandedRow=null;renderTcTable()}));
   document.getElementById('f-search').addEventListener('input',()=>{expandedRow=null;renderTcTable()});
   ['sf-index','sf-pair2','sf-cefr2','sf-speed','sf-tc-status','sf-tc-errtype','sf-quality'].forEach(id=>mselOnChange(id,()=>renderSegTable()));
@@ -2632,11 +2780,13 @@ function attachFilters(){
   ['ff-pair','ff-cefr','ff-errtype','ff-quality'].forEach(id=>mselOnChange(id,()=>renderFailures(allR)));
 }
 function attachSortTc(){
+  if(attachSortTc.done)return;attachSortTc.done=true;
   document.querySelectorAll('thead th[data-col]').forEach(th=>{
     th.addEventListener('click',()=>{const c=th.dataset.col;if(scTc===c)sdTc*=-1;else{scTc=c;sdTc=-1};document.querySelectorAll('thead th[data-col]').forEach(t=>t.classList.remove('sorted'));th.classList.add('sorted');expandedRow=null;renderTcTable()});
   });
 }
 function attachSortSeg(){
+  if(attachSortSeg.done)return;attachSortSeg.done=true;
   document.querySelectorAll('thead th[data-col2]').forEach(th=>{
     th.addEventListener('click',()=>{const c=th.dataset.col2;if(scSg===c)sdSg*=-1;else{scSg=c;sdSg=-1};document.querySelectorAll('thead th[data-col2]').forEach(t=>t.classList.remove('sorted'));th.classList.add('sorted');renderSegTable()});
   });
@@ -2726,6 +2876,7 @@ function renderTcTable(){
     const qBadge=x.contentLabel==='Clean'?`<span class="badge b-quality-clean">clean</span>`:x.contentLabel==='Unlabeled'?`<span class="badge b-quality-clean">—</span>`:`<span class="badge b-quality-flag"${x.contentLabelDesc?` data-tip="${x.contentLabelDesc.replace(/"/g,'&quot;')}"`:''}>${x.contentLabel}</span>`;
     tr.innerHTML=`
       <td class="mono" title="${x.name}">${x.name}</td>
+      <td>${srcBadgeHtml(x)}</td>
       <td style="font-size:11px;">${x.pair}</td>
       <td style="font-size:11px;">${x.cefr||'—'}</td>
       <td>${qBadge}</td>
@@ -2824,7 +2975,7 @@ function toggleDetail(x,tr){
   if(ex){ex.remove();document.querySelectorAll('tbody tr.expanded').forEach(r=>r.classList.remove('expanded'));if(expandedRow===x.name){expandedRow=null;return}}
   expandedRow=x.name;tr.classList.add('expanded');
   const dtr=document.createElement('tr');dtr.id='det-active';dtr.className='detail-row';
-  dtr.innerHTML=`<td colspan="12"><div class="detail-inner">${detailHTML(x)}</div></td>`;
+  dtr.innerHTML=`<td colspan="13"><div class="detail-inner">${detailHTML(x)}</div></td>`;
   tr.after(dtr);
 }
 function detailHTML(x){
@@ -2838,7 +2989,9 @@ function detailHTML(x){
   const src=(x.srcText&&x.srcText.length>700?x.srcText.slice(0,700)+'…':x.srcText||'—').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   return`<div class="detail-2col">
     <div>
-      <div class="dt-title">Source text</div><div class="src-box">${src}</div>
+      ${x.srcType&&x.srcType!=='text'
+        ?`<div class="dt-title">Source · ${SRC_META[x.srcType]?.label||x.srcType}</div><div class="src-box"><span class="src-ref">${x.srcUrl?`<a class="ss-link" style="margin:0" href="${escHtml(x.srcUrl)}" target="_blank" rel="noopener noreferrer">${escHtml(x.srcRef)} ↗</a>`:escHtml(x.srcRef||'—')}</span><div style="font-size:11px;color:var(--text-3);margin-top:.35rem;">Link testcase — the text fetched from this source isn't recorded in the results file.</div></div>`
+        :`<div class="dt-title">Source text</div><div class="src-box">${src}</div>`}
       <div style="margin-top:.6rem;"><div class="dt-title">Config</div>
       <div class="pills"><span class="pill">src: ${x.srcCfg||'—'}</span><span class="pill">tgt: ${x.tgtCfg||'—'}</span><span class="pill">${x.numSegs} segs</span>${x.contentReadyTime!=null?`<span class="pill">content ready: ${fmt(x.contentReadyTime)}</span>`:''}</div></div>
       ${x.contentLabel&&x.contentLabel!=='Clean'&&x.contentLabel!=='Unlabeled'?`<div style="margin-top:.6rem;"><div class="dt-title">Content quality</div><div class="pills"><span class="badge b-quality-flag">${x.contentLabel}</span></div>${x.contentLabelDesc?`<div style="font-size:11px;color:var(--text-2);margin-top:.35rem;">${x.contentLabelDesc.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`:''}</div>`:''}
